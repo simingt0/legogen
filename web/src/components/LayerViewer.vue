@@ -6,7 +6,7 @@
       <button class="nav-btn" :disabled="currentLayer >= totalLayers - 1" @click="nextLayer">&gt;</button>
     </div>
 
-    <div class="canvas-container">
+    <div class="canvas-container" ref="canvasContainer">
       <canvas ref="canvas"></canvas>
     </div>
   </div>
@@ -26,7 +26,9 @@ const props = defineProps({
 })
 
 const canvas = ref(null)
+const canvasContainer = ref(null)
 let ctx = null
+let resizeObserver = null
 
 const BRICK_COLORS = [
   '#DA291C', // red
@@ -64,44 +66,55 @@ function nextLayer() {
 }
 
 function drawLayer() {
-  if (!canvas.value || !ctx) return
+  if (!canvas.value || !ctx || !canvasContainer.value) return
 
   const canvasEl = canvas.value
-  const container = canvasEl.parentElement
-  canvasEl.width = container.clientWidth
-  canvasEl.height = container.clientHeight
+  const containerWidth = canvasContainer.value.clientWidth
+  const containerHeight = canvasContainer.value.clientHeight
+
+  canvasEl.width = containerWidth
+  canvasEl.height = containerHeight
 
   const width = canvasEl.width
   const height = canvasEl.height
   const grid = gridSize.value
 
-  // Calculate cell size to fit
-  const padding = 40
-  const cellSize = Math.min(
-    (width - padding * 2) / grid.width,
-    (height - padding * 2) / grid.depth
-  )
+  // Calculate cell size to fit the grid within the container with padding
+  const padding = 20
+  const availableWidth = width - padding * 2
+  const availableHeight = height - padding * 2
 
-  const offsetX = (width - grid.width * cellSize) / 2
-  const offsetY = (height - grid.depth * cellSize) / 2
+  const cellSize = Math.floor(Math.min(
+    availableWidth / grid.width,
+    availableHeight / grid.depth
+  ))
 
-  // Clear
+  const gridWidth = grid.width * cellSize
+  const gridHeight = grid.depth * cellSize
+  const offsetX = (width - gridWidth) / 2
+  const offsetY = (height - gridHeight) / 2
+
+  // Clear with yellow background
   ctx.fillStyle = '#FFD700'
   ctx.fillRect(0, 0, width, height)
 
-  // Draw grid
-  ctx.strokeStyle = '#ccc'
+  // Draw white grid background
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fillRect(offsetX, offsetY, gridWidth, gridHeight)
+
+  // Draw grid lines
+  ctx.strokeStyle = '#ddd'
   ctx.lineWidth = 1
   for (let x = 0; x <= grid.width; x++) {
     ctx.beginPath()
     ctx.moveTo(offsetX + x * cellSize, offsetY)
-    ctx.lineTo(offsetX + x * cellSize, offsetY + grid.depth * cellSize)
+    ctx.lineTo(offsetX + x * cellSize, offsetY + gridHeight)
     ctx.stroke()
   }
   for (let y = 0; y <= grid.depth; y++) {
     ctx.beginPath()
     ctx.moveTo(offsetX, offsetY + y * cellSize)
-    ctx.lineTo(offsetX + grid.width * cellSize, offsetY + y * cellSize)
+    ctx.lineTo(offsetX + gridWidth, offsetY + y * cellSize)
     ctx.stroke()
   }
 
@@ -133,7 +146,7 @@ function drawLayer() {
 
     // Draw studs
     ctx.fillStyle = darkenColor(BRICK_COLORS[i % BRICK_COLORS.length], 0.2)
-    const studRadius = cellSize * 0.2
+    const studRadius = Math.max(4, cellSize * 0.2)
     for (let sx = 0; sx < w; sx++) {
       for (let sy = 0; sy < h; sy++) {
         const cx = bx + (sx + 0.5) * cellSize
@@ -144,6 +157,11 @@ function drawLayer() {
       }
     }
   })
+
+  // Draw grid border
+  ctx.strokeStyle = '#000'
+  ctx.lineWidth = 2
+  ctx.strokeRect(offsetX, offsetY, gridWidth, gridHeight)
 }
 
 function darkenColor(hex, amount) {
@@ -159,23 +177,27 @@ function handleKeydown(e) {
   if (e.key === 'ArrowRight') nextLayer()
 }
 
-function handleResize() {
-  drawLayer()
-}
-
 watch(() => props.currentLayer, drawLayer)
 watch(() => store.buildResult, drawLayer)
 
 onMounted(() => {
   ctx = canvas.value.getContext('2d')
+
+  // Use ResizeObserver for dynamic sizing
+  resizeObserver = new ResizeObserver(() => {
+    drawLayer()
+  })
+  resizeObserver.observe(canvasContainer.value)
+
   drawLayer()
   window.addEventListener('keydown', handleKeydown)
-  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  window.removeEventListener('resize', handleResize)
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
 })
 </script>
 
@@ -230,9 +252,13 @@ onUnmounted(() => {
 .canvas-container {
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
 canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: block;

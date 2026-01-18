@@ -29,9 +29,7 @@ const showControls = ref(true)
 const showError = ref(false)
 
 // Game constants
-const PILLAR_WIDTH = 60
-const PILLAR_GAP = 40
-const PILLAR_COUNT = 8
+const PILLAR_WIDTH = 80
 const PLAYER_SIZE = 40
 const COIN_SIZE = 16
 const GRAVITY = 0.6
@@ -41,7 +39,7 @@ const MOVE_SPEED = 6
 // Game state
 let ctx = null
 let animationId = null
-let gameState = 'playing' // 'playing', 'success', 'failure'
+let gameState = 'playing'
 let transitionProgress = 0
 
 // Player state
@@ -73,22 +71,24 @@ function initGame() {
   canvas.value.height = height
   ctx = canvas.value.getContext('2d')
 
-  // Initialize pillars
-  const startX = (width - (PILLAR_COUNT * (PILLAR_WIDTH + PILLAR_GAP) - PILLAR_GAP)) / 2
+  // Calculate how many pillars we need to span full width (no gaps)
+  const pillarCount = Math.ceil(width / PILLAR_WIDTH) + 2
+
   pillars = []
-  for (let i = 0; i < PILLAR_COUNT; i++) {
+  for (let i = 0; i < pillarCount; i++) {
     pillars.push({
-      x: startX + i * (PILLAR_WIDTH + PILLAR_GAP),
+      x: i * PILLAR_WIDTH,
       baseY: height * 0.6,
       phase: Math.random() * Math.PI * 2,
-      amplitude: 60 + Math.random() * 40,
-      speed: 0.02 + Math.random() * 0.015,
+      amplitude: 50 + Math.random() * 50,
+      speed: 0.015 + Math.random() * 0.025,
+      targetSpeed: 0.015 + Math.random() * 0.025,
       y: 0
     })
   }
 
   // Initialize player on middle pillar
-  const middlePillar = pillars[Math.floor(PILLAR_COUNT / 2)]
+  const middlePillar = pillars[Math.floor(pillarCount / 2)]
   player.x = middlePillar.x + PILLAR_WIDTH / 2 - PLAYER_SIZE / 2
   player.y = middlePillar.baseY - PLAYER_SIZE - 100
   player.vy = 0
@@ -98,14 +98,14 @@ function initGame() {
 }
 
 function spawnCoins() {
-  const height = canvas.value.height
   coinList = []
-  for (let i = 0; i < PILLAR_COUNT; i++) {
-    if (Math.random() > 0.3) {
+  for (let i = 0; i < pillars.length; i++) {
+    if (Math.random() > 0.4) {
       const pillar = pillars[i]
       coinList.push({
         x: pillar.x + PILLAR_WIDTH / 2 - COIN_SIZE / 2,
-        y: pillar.baseY - 80 - Math.random() * 60,
+        baseY: pillar.baseY - 70 - Math.random() * 50,
+        pillarIndex: i,
         collected: false
       })
     }
@@ -119,8 +119,23 @@ function update() {
   if (gameState === 'playing') {
     // Update pillars
     for (const pillar of pillars) {
+      // Occasionally change speed
+      if (Math.random() < 0.002) {
+        pillar.targetSpeed = 0.01 + Math.random() * 0.03
+      }
+      // Smoothly transition to target speed
+      pillar.speed += (pillar.targetSpeed - pillar.speed) * 0.02
+
       pillar.phase += pillar.speed
       pillar.y = pillar.baseY + Math.sin(pillar.phase) * pillar.amplitude
+    }
+
+    // Update coin positions to follow their pillars
+    for (const coin of coinList) {
+      if (!coin.collected) {
+        const pillar = pillars[coin.pillarIndex]
+        coin.y = pillar.y - 70 - (coin.baseY - pillar.baseY + 70)
+      }
     }
 
     // Player horizontal movement
@@ -132,7 +147,7 @@ function update() {
 
     // Gravity
     player.vy += GRAVITY
-    if (keys.down) player.vy += 0.5 // Fast fall
+    if (keys.down) player.vy += 0.5
     player.y += player.vy
 
     // Collision with pillars
@@ -142,7 +157,6 @@ function update() {
       const pillarLeft = pillar.x
       const pillarRight = pillar.x + PILLAR_WIDTH
 
-      // Check if player is above pillar and falling
       if (
         player.vy >= 0 &&
         player.x + PLAYER_SIZE > pillarLeft &&
@@ -183,8 +197,7 @@ function update() {
 
     // Check if player fell off
     if (player.y > height + 100) {
-      // Respawn on a random pillar
-      const randomPillar = pillars[Math.floor(Math.random() * PILLAR_COUNT)]
+      const randomPillar = pillars[Math.floor(Math.random() * pillars.length)]
       player.x = randomPillar.x + PILLAR_WIDTH / 2 - PLAYER_SIZE / 2
       player.y = -PLAYER_SIZE
       player.vy = 0
@@ -192,7 +205,6 @@ function update() {
 
   } else if (gameState === 'success') {
     transitionProgress += 0.02
-    // Pillars rise up
     for (const pillar of pillars) {
       pillar.y -= 15
     }
@@ -205,7 +217,6 @@ function update() {
 
   } else if (gameState === 'failure') {
     transitionProgress += 0.015
-    // Pillars fall down
     for (const pillar of pillars) {
       pillar.y += 8
     }
@@ -233,12 +244,13 @@ function draw() {
     ctx.fillRect(0, 0, width, height)
   }
 
-  // Draw pillars
+  // Draw pillars (continuous, no gaps)
   for (const pillar of pillars) {
     ctx.fillStyle = '#DA291C'
-    ctx.fillRect(pillar.x, pillar.y, PILLAR_WIDTH, height - pillar.y + 200)
+    // Extend slightly to avoid any sub-pixel gaps
+    ctx.fillRect(pillar.x - 1, pillar.y, PILLAR_WIDTH + 2, height - pillar.y + 200)
 
-    // Pillar studs
+    // Pillar studs (2 studs per pillar width)
     ctx.fillStyle = '#b8231a'
     const studSize = 16
     const studY = pillar.y - 4
@@ -261,7 +273,6 @@ function draw() {
       ctx.fill()
       ctx.stroke()
 
-      // Inner circle
       ctx.fillStyle = '#FFA500'
       ctx.beginPath()
       ctx.arc(coin.x + COIN_SIZE / 2, coin.y + COIN_SIZE / 2, COIN_SIZE / 4, 0, Math.PI * 2)
@@ -332,6 +343,8 @@ function handleResize() {
   if (container.value && canvas.value) {
     canvas.value.width = container.value.clientWidth
     canvas.value.height = container.value.clientHeight
+    // Reinitialize pillars to span new width
+    initGame()
   }
 }
 
@@ -343,14 +356,11 @@ onMounted(async () => {
   window.addEventListener('keyup', handleKeyUp)
   window.addEventListener('resize', handleResize)
 
-  // Wait for build to complete
   try {
     await store.buildPromise
-    // Success!
     gameState = 'success'
     transitionProgress = 0
   } catch (error) {
-    // Failure
     gameState = 'failure'
     transitionProgress = 0
     showError.value = true

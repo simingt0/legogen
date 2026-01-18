@@ -23,7 +23,7 @@ async function handleGenerate() {
   if (!canGenerate.value) return
 
   resetForNewBuild()
-  startBuild() // Fire and forget - the loading page will await this
+  startBuild()
   router.push('/loading')
 }
 </script>
@@ -33,35 +33,24 @@ async function handleGenerate() {
   font-size: 24px;
   font-weight: 900;
   padding: var(--spacing-md) var(--spacing-xl);
-  background: linear-gradient(180deg, #ff4444 0%, var(--lego-red) 100%);
+  background: var(--lego-red);
   color: white;
   border: 4px solid var(--lego-black);
   border-radius: var(--radius-lg);
-  box-shadow:
-    0 6px 0 #8b0000,
-    0 10px 20px rgba(0, 0, 0, 0.3);
   transition: all 0.15s ease;
   letter-spacing: 2px;
 }
 
 .generate-btn:hover:not(:disabled) {
-  transform: translateY(-4px);
-  box-shadow:
-    0 10px 0 #8b0000,
-    0 16px 30px rgba(0, 0, 0, 0.4);
+  background: #b8231a;
 }
 
 .generate-btn:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow:
-    0 2px 0 #8b0000,
-    0 4px 10px rgba(0, 0, 0, 0.3);
+  transform: scale(0.98);
 }
 
 .generate-btn:disabled {
-  background: linear-gradient(180deg, #aaa 0%, #888 100%);
-  box-shadow:
-    0 6px 0 #555,
-    0 10px 20px rgba(0, 0, 0, 0.2);
+  background: #ccc;
+  color: #888;
 }
 </style>

@@ -6,6 +6,7 @@ Integrates all pipeline components: classifier, meshy, voxelizer, and builder
 import asyncio
 import os
 import sys
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -46,7 +47,7 @@ app = FastAPI(title="LegoGen", description="LEGO build instruction generator")
 # CORS setup for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -124,6 +125,10 @@ async def build(request: Request):
 
     metadata = BuildMetadata()
 
+    # Track start time for minimum delay (let users enjoy the mini-game!)
+    start_time = time.time()
+    MIN_RESPONSE_TIME = 5.0  # seconds
+
     try:
         print(f"\n{'=' * 70}")
         print(f"🚀 STARTING PIPELINE")
@@ -189,6 +194,13 @@ async def build(request: Request):
                     f"Total cells skipped: {result['total_cells_skipped']} (tolerance: {result.get('total_tolerance', 0)})"
                 )
             print(f"{'=' * 70}\n")
+
+            # Ensure minimum response time so users can enjoy the mini-game
+            elapsed = time.time() - start_time
+            if elapsed < MIN_RESPONSE_TIME:
+                delay = MIN_RESPONSE_TIME - elapsed
+                print(f"⏳ Adding {delay:.1f}s delay for mini-game enjoyment...")
+                await asyncio.sleep(delay)
 
             return BuildResponse(
                 success=True,

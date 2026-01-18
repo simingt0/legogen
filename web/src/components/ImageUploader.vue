@@ -17,7 +17,7 @@
 
     <template v-if="hasImage">
       <img :src="store.imagePreviewUrl" alt="Uploaded LEGO bricks" class="preview" />
-      <button class="change-btn" @click.stop="clearImage">Change Image</button>
+      <button class="change-btn" @click.stop="openFileDialog">Change Image</button>
     </template>
 
     <template v-else>
@@ -45,6 +45,10 @@ function triggerFileInput() {
   }
 }
 
+function openFileDialog() {
+  fileInput.value?.click()
+}
+
 function handleFileSelect(e) {
   const file = e.target.files?.[0]
   if (file && isValidImage(file)) {
@@ -62,13 +66,6 @@ function handleDrop(e) {
 
 function isValidImage(file) {
   return file.type === 'image/jpeg' || file.type === 'image/png'
-}
-
-function clearImage() {
-  setImage(null)
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
 }
 </script>
 
@@ -137,15 +134,24 @@ function clearImage() {
 
 .change-btn {
   position: absolute;
-  bottom: var(--spacing-md);
-  right: var(--spacing-md);
-  background: var(--lego-red);
-  color: white;
-  border-color: var(--lego-black);
-  font-size: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--lego-black);
+  border: 3px solid var(--lego-black);
+  font-size: 16px;
+  font-weight: 700;
+  padding: var(--spacing-md) var(--spacing-lg);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.uploader.has-image:hover .change-btn {
+  opacity: 1;
 }
 
 .change-btn:hover {
-  background: #b8231a;
+  background: var(--lego-white);
 }
 </style>

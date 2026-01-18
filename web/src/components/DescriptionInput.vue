@@ -91,8 +91,8 @@ textarea {
 
 .suggestion-btn {
   background: transparent;
-  border: 2px dashed #ccc;
-  color: #888;
+  border: 2px dashed var(--lego-black);
+  color: var(--lego-black);
   font-size: 14px;
   padding: var(--spacing-sm) var(--spacing-md);
   transition: all 0.2s ease;
