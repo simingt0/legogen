@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegoGen - Build Instructions Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧱 LegoGen</h1>
+            <p class="subtitle">Turn your LEGO bricks into anything you can imagine</p>
+        </header>
+
+        <main>
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="image-upload" class="upload-label">
+                        <div id="upload-zone" class="upload-zone">
+                            <span class="upload-icon">📷</span>
+                            <span class="upload-text">Drop your brick photo here or click to browse</span>
+                            <img id="image-preview" class="image-preview" style="display: none;" alt="Preview">
+                        </div>
+                        <input type="file" id="image-upload" accept="image/jpeg,image/png" hidden>
+                    </label>
+                </div>
+
+                <div class="input-group">
+                    <label for="description">What do you want to build?</label>
+                    <textarea
+                        id="description"
+                        placeholder="Describe what you want to build... (e.g., 'a small house with a chimney')"
+                        maxlength="600"
+                    ></textarea>
+                    <span class="char-count"><span id="char-current">0</span>/600</span>
+                </div>
+
+                <button id="submit-btn" class="submit-btn" disabled>
+                    <span class="btn-text">Generate Build Instructions</span>
+                    <span class="btn-loading" style="display: none;">Generating...</span>
+                </button>
+            </section>
+
+            <!-- Error Display -->
+            <section id="error-section" class="error-section" style="display: none;">
+                <p id="error-message"></p>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-section" style="display: none;">
+                <h2>Build Instructions</h2>
+
+                <div class="metadata">
+                    <span id="meta-dimensions"></span>
+                    <span id="meta-bricks"></span>
+                </div>
+
+                <div class="layer-viewer">
+                    <div class="layer-controls">
+                        <button id="prev-layer" class="nav-btn">← Previous</button>
+                        <span id="layer-indicator">Layer 1 of 1</span>
+                        <button id="next-layer" class="nav-btn">Next →</button>
+                    </div>
+
+                    <canvas id="layer-canvas" width="400" height="400"></canvas>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Built for hackathon fun 🚀</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
