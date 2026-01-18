@@ -1,6 +1,7 @@
 <template>
   <div class="mini-game" ref="container">
     <div class="score">Coins: {{ coins }}</div>
+    <div class="falls">Falls: {{ falls }}</div>
     <canvas ref="canvas"></canvas>
     <div v-if="showControls" class="controls-hint">
       <div class="key">W</div>
@@ -32,6 +33,7 @@ const router = useRouter()
 const container = ref(null)
 const canvas = ref(null)
 const coins = ref(0)
+const falls = ref(0)
 const showControls = ref(true)
 const showError = ref(false)
 
@@ -328,8 +330,9 @@ function update() {
 
     // Check if player fell off
     if (player.y > height + 100) {
+      falls.value++
       const randomPillar = pillars[Math.floor(Math.random() * pillars.length)]
-      player.x = randomPillar.x + PILLAR_WIDTH / 2 - PLAYER_SIZE / 2
+      player.x = randomPillar.x + randomPillar.width / 2 - PLAYER_SIZE / 2
       player.y = -PLAYER_SIZE
       player.vy = 0
     }
@@ -581,6 +584,20 @@ canvas {
 .score {
   position: absolute;
   top: var(--spacing-md);
+  left: var(--spacing-md);
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--lego-black);
+  background: var(--lego-white);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 3px solid var(--lego-black);
+  border-radius: var(--radius-md);
+  z-index: 10;
+}
+
+.falls {
+  position: absolute;
+  top: calc(var(--spacing-md) + 56px);
   left: var(--spacing-md);
   font-size: 24px;
   font-weight: 900;
