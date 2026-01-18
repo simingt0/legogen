@@ -134,7 +134,8 @@ function update() {
     for (const coin of coinList) {
       if (!coin.collected) {
         const pillar = pillars[coin.pillarIndex]
-        coin.y = pillar.y - 70 - (coin.baseY - pillar.baseY + 70)
+        // Move coin with pillar: base position + pillar's offset from rest
+        coin.y = coin.baseY + (pillar.y - pillar.baseY)
       }
     }
 
@@ -262,21 +263,23 @@ function draw() {
     ctx.fill()
   }
 
-  // Draw coins
-  for (const coin of coinList) {
-    if (!coin.collected) {
-      ctx.fillStyle = '#FFD700'
-      ctx.strokeStyle = '#000'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(coin.x + COIN_SIZE / 2, coin.y + COIN_SIZE / 2, COIN_SIZE / 2, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
+  // Draw coins (hide during success transition)
+  if (gameState !== 'success') {
+    for (const coin of coinList) {
+      if (!coin.collected) {
+        ctx.fillStyle = '#FFD700'
+        ctx.strokeStyle = '#000'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(coin.x + COIN_SIZE / 2, coin.y + COIN_SIZE / 2, COIN_SIZE / 2, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
 
-      ctx.fillStyle = '#FFA500'
-      ctx.beginPath()
-      ctx.arc(coin.x + COIN_SIZE / 2, coin.y + COIN_SIZE / 2, COIN_SIZE / 4, 0, Math.PI * 2)
-      ctx.fill()
+        ctx.fillStyle = '#FFA500'
+        ctx.beginPath()
+        ctx.arc(coin.x + COIN_SIZE / 2, coin.y + COIN_SIZE / 2, COIN_SIZE / 4, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
   }
 

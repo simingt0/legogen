@@ -144,11 +144,14 @@ function isValidImage(file) {
   font-weight: 700;
   padding: var(--spacing-md) var(--spacing-lg);
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.2s ease;
 }
 
-.uploader.has-image:hover .change-btn {
+.uploader.has-image:hover .change-btn,
+.change-btn:focus {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .change-btn:hover {

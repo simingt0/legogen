@@ -57,7 +57,8 @@ export async function startBuild() {
 
   const formData = new FormData()
   formData.append('image', store.imageFile)
-  formData.append('description', store.description)
+  // Prepend style hints for better mesh generation (hidden from user)
+  formData.append('description', '(low poly, cartoon) ' + store.description)
 
   store.buildPromise = fetch('/build', {
     method: 'POST',

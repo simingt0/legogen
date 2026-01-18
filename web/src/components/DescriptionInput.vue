@@ -29,11 +29,11 @@ import { ref, watch } from 'vue'
 import { store, setDescription } from '../store'
 
 const suggestions = [
-  { id: 1, label: 'Mushroom', text: 'A cute red mushroom with white spots' },
-  { id: 2, label: 'House', text: 'A simple house with a door and windows' },
-  { id: 3, label: 'Mug', text: 'A coffee mug with a handle' },
-  { id: 4, label: 'Banana', text: 'A yellow banana' },
-  { id: 5, label: 'Dwayne the Block Johnson', text: 'Dwayne "The Rock" Johnson as a blocky figure' }
+  { id: 1, label: 'Mushroom', text: 'mushroom' },
+  { id: 2, label: 'House', text: 'a small house' },
+  { id: 3, label: 'Mug', text: 'a mug' },
+  { id: 4, label: 'Banana', text: 'a banana' },
+  { id: 5, label: 'Dwayne the Block Johnson', text: "a realistic rendering of dwayne the rock johnson's face" }
 ]
 
 const localDescription = ref(store.description)
@@ -70,7 +70,7 @@ function selectSuggestion(text) {
 textarea {
   flex: 1;
   resize: none;
-  font-size: 16px;
+  font-size: 20px;
   line-height: 1.5;
   min-height: 150px;
 }
@@ -90,12 +90,15 @@ textarea {
 }
 
 .suggestion-btn {
+  flex: 1 1 auto;
+  min-width: fit-content;
   background: transparent;
   border: 2px dashed var(--lego-black);
   color: var(--lego-black);
   font-size: 14px;
   padding: var(--spacing-sm) var(--spacing-md);
   transition: all 0.2s ease;
+  text-align: center;
 }
 
 .suggestion-btn:hover {

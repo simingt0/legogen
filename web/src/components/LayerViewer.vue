@@ -1,9 +1,21 @@
 <template>
   <div class="layer-viewer">
     <div class="header">
-      <button class="nav-btn" :disabled="currentLayer === 0" @click="prevLayer">&lt;</button>
+      <button class="nav-btn arrow-btn" :disabled="currentLayer === 0" @click="prevLayer">
+        <div class="brick-arrow left">
+          <div class="arrow-row"><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span><span class="empty"></span></div>
+          <div class="arrow-row"><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span></div>
+          <div class="arrow-row"><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span><span class="empty"></span></div>
+        </div>
+      </button>
       <span class="layer-indicator">Layer {{ currentLayer + 1 }} of {{ totalLayers }}</span>
-      <button class="nav-btn" :disabled="currentLayer >= totalLayers - 1" @click="nextLayer">&gt;</button>
+      <button class="nav-btn arrow-btn" :disabled="currentLayer >= totalLayers - 1" @click="nextLayer">
+        <div class="brick-arrow right">
+          <div class="arrow-row"><span class="empty"></span><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span></div>
+          <div class="arrow-row"><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span></div>
+          <div class="arrow-row"><span class="empty"></span><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span></div>
+        </div>
+      </button>
     </div>
 
     <div class="canvas-container" ref="canvasContainer">
@@ -122,12 +134,17 @@ function drawLayer() {
   const layer = store.buildResult?.layers?.[props.currentLayer] || []
   layer.forEach((brick, i) => {
     const dims = BRICK_DIMS[brick.type] || [1, 1]
-    let w = dims[0]
-    let h = dims[1]
+    const brickWidth = dims[0]  // width (smaller dimension)
+    const brickLength = dims[1] // length (larger dimension)
 
-    // Handle rotation
+    // Backend convention: rotation 0 = length along X, rotation 90 = length along Y
+    let w, h
     if (brick.rotation === 90) {
-      [w, h] = [h, w]
+      w = brickWidth   // X = width
+      h = brickLength  // Y = length
+    } else {
+      w = brickLength  // X = length
+      h = brickWidth   // Y = width
     }
 
     const bx = offsetX + brick.x * cellSize
@@ -223,23 +240,83 @@ onUnmounted(() => {
 }
 
 .nav-btn {
-  width: 48px;
-  height: 48px;
-  font-size: 24px;
-  font-weight: 900;
-  background: var(--lego-red);
-  color: white;
+  background: var(--lego-white);
   border: 3px solid var(--lego-black);
   border-radius: var(--radius-md);
+  padding: 8px;
+}
+
+.nav-btn.arrow-btn {
+  width: auto;
+  height: auto;
 }
 
 .nav-btn:hover:not(:disabled) {
-  background: #b8231a;
+  background: #f0f0f0;
 }
 
 .nav-btn:disabled {
+  opacity: 0.4;
+}
+
+.brick-arrow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.arrow-row {
+  display: flex;
+  gap: 2px;
+}
+
+.brick-arrow .brick {
+  width: 12px;
+  height: 12px;
+  background: var(--lego-red);
+  border-radius: 2px;
+  position: relative;
+}
+
+.brick-arrow .brick::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: #b8231a;
+  border-radius: 50%;
+}
+
+.brick-arrow .brick.highlight {
+  background: var(--lego-yellow);
+}
+
+.brick-arrow .brick.highlight::after {
+  background: #e6c200;
+}
+
+.brick-arrow .empty {
+  width: 12px;
+  height: 12px;
+}
+
+.nav-btn:disabled .brick-arrow .brick {
   background: #ccc;
-  color: #888;
+}
+
+.nav-btn:disabled .brick-arrow .brick::after {
+  background: #aaa;
+}
+
+.nav-btn:disabled .brick-arrow .brick.highlight {
+  background: #ddd;
+}
+
+.nav-btn:disabled .brick-arrow .brick.highlight::after {
+  background: #bbb;
 }
 
 .layer-indicator {
