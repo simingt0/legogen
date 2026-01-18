@@ -3,7 +3,7 @@
     <h2 class="title">Preview</h2>
 
     <div class="side-view-area">
-      <SideView v-model:currentLayer="modelCurrentLayer" :viewAngle="viewAngle" @viewAngleChange="handleViewAngleChange" />
+      <SideView v-model:currentLayer="modelCurrentLayer" :viewAngle="viewAngle" @viewAngleChange="handleViewAngleChange" @update:isCornerView="handleIsCornerViewChange" />
     </div>
 
     <div class="stats" v-if="metadata">
@@ -44,7 +44,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:currentLayer', 'viewAngleChange'])
+const emit = defineEmits(['update:currentLayer', 'viewAngleChange', 'update:isCornerView'])
 
 const router = useRouter()
 
@@ -58,6 +58,10 @@ const modelCurrentLayer = computed({
 
 function handleViewAngleChange(angle) {
   emit('viewAngleChange', angle)
+}
+
+function handleIsCornerViewChange(isCorner) {
+  emit('update:isCornerView', isCorner)
 }
 
 function goToLanding() {

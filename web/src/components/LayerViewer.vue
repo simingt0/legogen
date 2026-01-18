@@ -38,6 +38,10 @@ const props = defineProps({
   viewAngle: {
     type: Number,
     default: 0
+  },
+  isCornerView: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -184,31 +188,66 @@ function drawLayer() {
   ctx.lineWidth = 2
   ctx.strokeRect(offsetX, offsetY, gridWidth, gridHeight)
 
-  // Draw bold black line on the edge being viewed from
-  ctx.strokeStyle = '#000'
-  ctx.lineWidth = 6
-  ctx.beginPath()
+  if (props.isCornerView) {
+    // Draw bold black dot at the corner we're viewing from
+    ctx.fillStyle = '#000'
+    let dotX, dotY
+    const dotRadius = 8
 
-  switch(props.viewAngle) {
-    case 0: // Front view - top edge (viewing from +Y)
-      ctx.moveTo(offsetX, offsetY)
-      ctx.lineTo(offsetX + gridWidth, offsetY)
-      break
-    case 1: // Right view - left edge (viewing from +X)
-      ctx.moveTo(offsetX, offsetY)
-      ctx.lineTo(offsetX, offsetY + gridHeight)
-      break
-    case 2: // Back view - bottom edge (viewing from -Y)
-      ctx.moveTo(offsetX, offsetY + gridHeight)
-      ctx.lineTo(offsetX + gridWidth, offsetY + gridHeight)
-      break
-    case 3: // Left view - right edge (viewing from -X)
-      ctx.moveTo(offsetX + gridWidth, offsetY)
-      ctx.lineTo(offsetX + gridWidth, offsetY + gridHeight)
-      break
+    switch(props.viewAngle) {
+      case 0: // Front view - viewing from +Y (bottom right corner)
+        dotX = offsetX + gridWidth
+        dotY = offsetY + gridHeight
+        break
+      case 1: // Right view - viewing from +X (top right corner)
+        dotX = offsetX + gridWidth
+        dotY = offsetY
+        break
+      case 2: // Back view - viewing from -Y (top left corner)
+        dotX = offsetX
+        dotY = offsetY
+        break
+      case 3: // Left view - viewing from -X (bottom left corner)
+        dotX = offsetX
+        dotY = offsetY + gridHeight
+        break
+    }
+
+    ctx.beginPath()
+    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Add white outline for visibility
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  } else {
+    // Draw bold black line on the edge being viewed from
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = 6
+    ctx.beginPath()
+
+    switch(props.viewAngle) {
+      case 0: // Front view - top edge (viewing from +Y)
+        ctx.moveTo(offsetX, offsetY)
+        ctx.lineTo(offsetX + gridWidth, offsetY)
+        break
+      case 1: // Right view - left edge (viewing from +X)
+        ctx.moveTo(offsetX, offsetY)
+        ctx.lineTo(offsetX, offsetY + gridHeight)
+        break
+      case 2: // Back view - bottom edge (viewing from -Y)
+        ctx.moveTo(offsetX, offsetY + gridHeight)
+        ctx.lineTo(offsetX + gridWidth, offsetY + gridHeight)
+        break
+      case 3: // Left view - right edge (viewing from -X)
+        ctx.moveTo(offsetX + gridWidth, offsetY)
+        ctx.lineTo(offsetX + gridWidth, offsetY + gridHeight)
+        break
+    }
+
+    ctx.stroke()
   }
-
-  ctx.stroke()
 }
 
 function darkenColor(hex, amount) {

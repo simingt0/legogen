@@ -5,11 +5,11 @@
     </aside>
 
     <main class="layer-panel">
-      <LayerViewer v-model:currentLayer="currentLayer" :viewAngle="viewAngle" @rotateLeft="handleRotateLeft" @rotateRight="handleRotateRight" />
+      <LayerViewer v-model:currentLayer="currentLayer" :viewAngle="viewAngle" :isCornerView="isCornerView" @rotateLeft="handleRotateLeft" @rotateRight="handleRotateRight" />
     </main>
 
     <aside class="preview-panel">
-      <PreviewPanel v-model:currentLayer="currentLayer" :viewAngle="viewAngle" @viewAngleChange="handleViewAngleChange" />
+      <PreviewPanel v-model:currentLayer="currentLayer" :viewAngle="viewAngle" @viewAngleChange="handleViewAngleChange" @update:isCornerView="handleIsCornerViewChange" />
     </aside>
   </div>
 </template>
@@ -25,6 +25,7 @@ import { store } from '../store'
 const router = useRouter()
 const currentLayer = ref(0)
 const viewAngle = ref(0)
+const isCornerView = ref(false)
 
 function handleViewAngleChange(angle) {
   viewAngle.value = angle
@@ -36,6 +37,10 @@ function handleRotateLeft() {
 
 function handleRotateRight() {
   viewAngle.value = (viewAngle.value + 1) % 4
+}
+
+function handleIsCornerViewChange(isCorner) {
+  isCornerView.value = isCorner
 }
 
 onMounted(() => {
