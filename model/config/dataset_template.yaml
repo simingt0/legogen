@@ -1,0 +1,65 @@
+# LEGO Brick Detection Dataset Configuration
+
+# Dataset Information
+path: data/yolo  # Dataset root directory
+train: images/train  # Training images directory
+val: images/val    # Validation images directory
+test: null          # Test images directory (optional)
+
+# Classes
+nc: 0  # Number of classes (will be updated automatically)
+names: {}  # Class names (will be updated automatically)
+
+# Dataset Statistics (populated automatically)
+stats:
+  train_images: 0
+  val_images: 0
+  total_images: 0
+  
+# Class Distribution (populated automatically)
+class_distribution:
+  train: {}
+  val: {}
+  
+# Image Properties
+image_properties:
+  formats: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']
+  min_size: [32, 32]  # Minimum image size [width, height]
+  max_size: [4096, 4096]  # Maximum image size [width, height]
+  
+# Annotation Properties
+annotation_properties:
+  format: "yolo"  # Annotation format (yolo, coco, pascal_voc)
+  normalized: true  # Whether coordinates are normalized [0-1]
+  
+# Preprocessing
+preprocessing:
+  enabled: true
+  resize: null  # Resize images to specific size [width, height]
+  normalize: true  # Normalize pixel values [0-1]
+  augment: true  # Apply data augmentation
+  
+# Augmentation Settings
+augmentation:
+  enabled: true
+  horizontal_flip: 0.5
+  vertical_flip: 0.0
+  rotation: 10  # Maximum rotation angle in degrees
+  brightness: 0.2  # Brightness adjustment factor
+  contrast: 0.2  # Contrast adjustment factor
+  saturation: 0.2  # Saturation adjustment factor
+  hue: 0.1  # Hue adjustment factor
+  
+# Validation Settings
+validation:
+  split_ratio: 0.2  # Validation split ratio
+  stratified: true  # Stratified split by class
+  random_state: 42  # Random seed for reproducibility
+  
+# Quality Control
+quality_control:
+  check_annotations: true  # Validate annotation format
+  check_images: true  # Validate image files
+  remove_empty: true  # Remove images without annotations
+  min_objects_per_image: 1  # Minimum objects per image
+  max_objects_per_image: 100  # Maximum objects per image

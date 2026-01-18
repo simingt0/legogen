@@ -1,0 +1,92 @@
+# YOLO Training Configuration for LEGO Brick Detection
+
+# Model Configuration
+model:
+  name: "yolov8m"  # Options: yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
+  pretrained: true
+  input_size: 640
+  
+# Dataset Configuration
+dataset:
+  path: "data/yolo"
+  train: "images/train"
+  val: "images/val"
+  test: null  # Optional test split
+  
+# Training Hyperparameters
+training:
+  epochs: 100
+  batch_size: 16
+  learning_rate: 0.01
+  weight_decay: 0.0005
+  momentum: 0.937
+  warmup_epochs: 3.0
+  warmup_bias_lr: 0.1
+  warmup_momentum: 0.8
+  
+# Data Augmentation
+augmentation:
+  hsv_h: 0.015      # HSV Hue augmentation (fraction)
+  hsv_s: 0.7        # HSV Saturation augmentation (fraction)
+  hsv_v: 0.4        # HSV Value augmentation (fraction)
+  degrees: 0.0      # Rotation degrees (+/- deg)
+  translate: 0.1      # Translation (+/- fraction)
+  scale: 0.5          # Scale (+/- gain)
+  shear: 0.0          # Shear (+/- deg)
+  perspective: 0.0    # Perspective (+/- fraction), range 0-0.001
+  flipud: 0.0         # Vertical flip (probability)
+  fliplr: 0.5         # Horizontal flip (probability)
+  mosaic: 1.0         # Mosaic augmentation (probability)
+  mixup: 0.0          # Mixup augmentation (probability)
+  copy_paste: 0.0     # Copy-paste augmentation (probability)
+  
+# Loss Function Weights
+loss:
+  box: 7.5      # Box loss gain
+  cls: 0.5      # Class loss gain
+  dfl: 1.5      # DFL loss gain
+  
+# Validation
+validation:
+  val_period: 1        # Validate every N epochs
+  save_period: 10      # Save checkpoint every N epochs
+  patience: 50         # Early stopping patience (epochs)
+  conf_threshold: 0.5  # Confidence threshold for validation
+  iou_threshold: 0.5   # IoU threshold for NMS
+  
+# Hardware Configuration
+hardware:
+  device: "cuda"        # cuda, cpu, or specific device (e.g., "cuda:0")
+  workers: 8            # Number of data loading workers
+  pin_memory: true      # Pin memory for faster GPU transfer
+  
+# Logging and Monitoring
+logging:
+  use_wandb: true       # Use Weights & Biases for experiment tracking
+  wandb_project: "lego-brick-detection"
+  log_period: 1          # Log metrics every N batches
+  save_images: true      # Save example images during training
+  
+# Output Configuration
+output:
+  save_dir: "models"
+  experiment_name: "lego_yolov8m_baseline"
+  save_predictions: true
+  export_formats: ["onnx"]  # Formats to export after training
+  
+# Optimization
+optimization:
+  optimizer: "SGD"        # SGD, Adam, AdamW, RMSprop
+  lr_scheduler: "cosine"  # linear, cosine, cosine_with_restarts, polynomial
+  cosine_final_lr_ratio: 0.1  # Final LR as ratio of initial LR
+  
+# Advanced Settings
+advanced:
+  amp: true              # Automatic Mixed Precision training
+  freeze: null           # Freeze layers (list of layer indices)
+  multi_scale: false     # Multi-scale training
+  single_cls: false      # Train multi-class data as single-class
+  rect: false            # Rectangular training
+  resume: false          # Resume training from checkpoint
+  overlap_mask: true     # Overlap mask for segmentation
+  mask_ratio: 4          # Mask downsample ratio (segmentation only)

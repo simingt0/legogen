@@ -1,0 +1,66 @@
+# Inference Configuration for LEGO Brick Detection
+
+# Model Configuration
+model:
+  yolo_model_path: "models/yolov8m_lego_detection.pt"  # Path to trained YOLO model
+  confidence_threshold: 0.5                            # YOLO confidence threshold
+  iou_threshold: 0.5                                 # NMS IoU threshold
+  
+# Brickognize API Configuration
+brickognize:
+  enabled: true                                        # Enable Brickognize API
+  api_key: null                                       # Set via environment variable BRICKOGNIZE_API_KEY
+  confidence_threshold: 0.7                          # Brickognize confidence threshold
+  max_retries: 3                                     # Max API retries
+  retry_delay: 1.0                                   # Delay between retries (seconds)
+  
+# Input/Output Configuration
+io:
+  input_dir: "data/test_images"                        # Input images directory
+  output_dir: "inference_results"                      # Output results directory
+  supported_formats: [".jpg", ".jpeg", ".png", ".bmp", ".tiff"]
+  
+# Processing Configuration
+processing:
+  batch_size: 1                                        # Number of images to process concurrently
+  save_annotated_images: true                        # Save images with bounding boxes
+  save_predictions: true                             # Save detection results as JSON
+  save_visualizations: true                          # Save visualization plots
+  
+# Visualization Configuration
+visualization:
+  font_scale: 0.6                                      # Text font scale
+  thickness: 2                                         # Bounding box thickness
+  color_palette: "default"                           # Color palette for different classes
+  show_confidence: true                              # Show confidence scores
+  show_class_names: true                             # Show class names
+  
+# Performance Configuration
+performance:
+  device: "auto"                                      # auto, cuda, cpu, or specific device
+  half_precision: true                              # Use half precision (FP16) if available
+  optimize_for_speed: false                          # Optimize for speed over accuracy
+  
+# Post-Processing Configuration
+post_processing:
+  min_detection_area: 100                            # Minimum detection area (pixels²)
+  max_detection_area: 1000000                        # Maximum detection area (pixels²)
+  aspect_ratio_range: [0.2, 5.0]                     # Acceptable aspect ratio range
+  
+# Output Format Configuration
+output_format:
+  include_metadata: true                            # Include processing metadata
+  include_timestamps: true                           # Include timestamps in results
+  pretty_print_json: true                            # Pretty print JSON output
+  
+# Logging Configuration
+logging:
+  level: "INFO"                                      # DEBUG, INFO, WARNING, ERROR
+  save_log_file: true                               # Save processing log
+  log_file_name: "inference_log.txt"                # Log file name
+  
+# Advanced Configuration
+advanced:
+  enable_profiling: false                            # Enable performance profiling
+  memory_efficient: false                            # Use memory-efficient processing
+  cleanup_temp_files: true                           # Clean up temporary files after processing
