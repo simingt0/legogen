@@ -1,0 +1,15 @@
+# COCO-style dataset configuration
+#
+# train and val directories should contain both images and labels folders
+#   /data/train/images
+#   /data/train/labels
+#   /data/val/images
+#   /data/val/labels
+
+path: c:/Users/jelli/Desktop/legogen/model/data  # root dir
+train: train/images  # train images (relative to 'path')
+val: val/images  # val images (relative to 'path')
+
+# Classes
+names:
+  0: brick

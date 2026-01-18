@@ -32,7 +32,6 @@ kaggle>=1.5.0  # For downloading Kaggle datasets
 
 # For Brickognize API
 aiohttp>=3.8.0
-asyncio
 
 # Development and testing
 pytest>=7.0.0

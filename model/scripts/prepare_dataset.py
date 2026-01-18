@@ -36,7 +36,21 @@ class LegoDatasetPreparer:
             dir_path.mkdir(parents=True, exist_ok=True)
     
     def download_kaggle_dataset(self, kaggle_username: str = None, kaggle_key: str = None):
-        """Download dataset from Kaggle."""
+        """Download dataset from Kaggle or unzip local archive."""
+        
+        # Check for local archive first
+        local_archive = self.data_dir / 'archive.zip'
+        if local_archive.exists():
+            print("Found local archive.zip. Unzipping...")
+            import zipfile
+            try:
+                with zipfile.ZipFile(local_archive, 'r') as zip_ref:
+                    zip_ref.extractall(self.raw_data_dir)
+                print("Dataset unzipped successfully!")
+                return True
+            except Exception as e:
+                print(f"Error unzipping local archive: {e}. Will try to download from Kaggle.")
+        
         print("Downloading Kaggle dataset...")
         
         # Set Kaggle credentials if provided
@@ -54,7 +68,7 @@ class LegoDatasetPreparer:
             print("Dataset downloaded successfully!")
         except Exception as e:
             print(f"Error downloading dataset: {e}")
-            print("Please download manually from: https://www.kaggle.com/datasets/ronanpickell/b100-lego-detection-dataset")
+            print("Please download manually from: https://www.kaggle.com/datasets/ronanpickell/b100-lego-detection-dataset and place archive.zip in the 'data' directory.")
             return False
         return True
     
