@@ -1,7 +1,7 @@
 <template>
   <div
     class="uploader"
-    :class="{ 'has-image': hasImage, 'drag-over': isDragging }"
+    :class="{ 'has-image': hasImage, 'drag-over': isDragging, 'empty': !hasImage }"
     @dragover.prevent="isDragging = true"
     @dragleave.prevent="isDragging = false"
     @drop.prevent="handleDrop"
@@ -85,6 +85,21 @@ function isValidImage(file) {
   overflow: hidden;
 }
 
+.uploader.empty {
+  animation: gentle-pulse 3s ease-in-out infinite;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% {
+    border-color: var(--lego-black);
+    opacity: 1;
+  }
+  50% {
+    border-color: var(--lego-red);
+    opacity: 0.85;
+  }
+}
+
 .uploader:hover:not(.has-image) {
   border-color: var(--lego-red);
   background-color: #fff8f8;
@@ -157,4 +172,5 @@ function isValidImage(file) {
 .change-btn:hover {
   background: var(--lego-white);
 }
+
 </style>

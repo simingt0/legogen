@@ -62,7 +62,7 @@ const letterPatterns = {
 }
 
 const letters = ['L', 'E', 'G', 'O', 'G', 'E', 'N']
-const colors = ['#DA291C', '#0055BF', '#237841', '#FFA500', '#DA291C', '#0055BF', '#237841']
+const colors = ['#DA291C', '#0055BF', '#237841', '#DA291C', '#0055BF', '#237841', '#DA291C']
 
 // Build the full grid by combining letter patterns with spacing
 function buildGrid() {

@@ -1,29 +1,34 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import LandingPage from './pages/LandingPage.vue'
-import LoadingPage from './pages/LoadingPage.vue'
-import BuildingPage from './pages/BuildingPage.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import LandingPage from "./pages/LandingPage.vue";
+import LoadingPage from "./pages/LoadingPage.vue";
+import BuildingPage from "./pages/BuildingPage.vue";
 
 const routes = [
   {
-    path: '/',
-    name: 'landing',
-    component: LandingPage
+    path: "/",
+    name: "landing",
+    component: LandingPage,
   },
   {
-    path: '/loading',
-    name: 'loading',
-    component: LoadingPage
+    path: "/loading",
+    name: "loading",
+    component: LoadingPage,
   },
   {
-    path: '/build',
-    name: 'build',
-    component: BuildingPage
-  }
-]
+    path: "/game",
+    name: "game",
+    component: LoadingPage,
+  },
+  {
+    path: "/build",
+    name: "build",
+    component: BuildingPage,
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
-export default router
+export default router;

@@ -50,7 +50,8 @@ async function handleGenerate() {
 }
 
 .generate-btn:disabled {
-  background: #ccc;
-  color: #888;
+  background: transparent;
+  color: var(--lego-black);
+  border: 4px solid var(--lego-black);
 }
 </style>

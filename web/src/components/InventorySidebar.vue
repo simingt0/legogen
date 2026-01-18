@@ -6,7 +6,14 @@
       <h3 class="section-title">Layer {{ currentLayer + 1 }}</h3>
       <ul class="piece-list current">
         <li v-for="(piece, i) in currentLayerPieces" :key="'current-' + i" class="piece-item">
-          <span class="piece-icon" :style="{ backgroundColor: getBrickColor(piece.type) }"></span>
+          <div class="brick-icon" :style="getBrickStyle(piece.type)">
+            <div
+              v-for="stud in getStudPositions(piece.type)"
+              :key="`stud-${stud.x}-${stud.y}`"
+              class="stud"
+              :style="{ left: stud.x + '%', top: stud.y + '%' }"
+            ></div>
+          </div>
           <span class="piece-name">{{ piece.type }}</span>
           <span class="piece-count">x{{ piece.count }}</span>
         </li>
@@ -19,7 +26,14 @@
       <h3 class="section-title muted">Full Build</h3>
       <ul class="piece-list full">
         <li v-for="(piece, i) in totalPieces" :key="'total-' + i" class="piece-item muted">
-          <span class="piece-icon small" :style="{ backgroundColor: getBrickColor(piece.type) }"></span>
+          <div class="brick-icon small" :style="getBrickStyle(piece.type)">
+            <div
+              v-for="stud in getStudPositions(piece.type)"
+              :key="`stud-${stud.x}-${stud.y}`"
+              class="stud"
+              :style="{ left: stud.x + '%', top: stud.y + '%' }"
+            ></div>
+          </div>
           <span class="piece-name">{{ piece.type }}</span>
           <span class="piece-count">x{{ piece.count }}</span>
         </li>
@@ -51,8 +65,44 @@ const BRICK_COLORS = {
   '2x6': '#FFA500'
 }
 
+const BRICK_DIMS = {
+  '1x1': [1, 1], '1x2': [1, 2], '1x3': [1, 3],
+  '1x4': [1, 4], '1x6': [1, 6], '2x2': [2, 2],
+  '2x3': [2, 3], '2x4': [2, 4], '2x6': [2, 6]
+}
+
 function getBrickColor(type) {
   return BRICK_COLORS[type] || '#888'
+}
+
+function getBrickStyle(type) {
+  const dims = BRICK_DIMS[type] || [1, 1]
+  const [width, length] = dims
+
+  // Base unit size in pixels (for width dimension)
+  const unitSize = 12
+
+  return {
+    width: `${length * unitSize}px`,
+    height: `${width * unitSize}px`,
+    backgroundColor: getBrickColor(type)
+  }
+}
+
+function getStudPositions(type) {
+  const dims = BRICK_DIMS[type] || [1, 1]
+  const [width, length] = dims
+
+  const studs = []
+  for (let w = 0; w < width; w++) {
+    for (let l = 0; l < length; l++) {
+      studs.push({
+        x: ((l + 0.5) / length) * 100,
+        y: ((w + 0.5) / width) * 100
+      })
+    }
+  }
+  return studs
 }
 
 const currentLayerPieces = computed(() => {
@@ -134,16 +184,28 @@ const totalPieces = computed(() => {
   opacity: 0.6;
 }
 
-.piece-icon {
-  width: 24px;
-  height: 16px;
+.brick-icon {
+  position: relative;
   border-radius: 2px;
   border: 2px solid rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.piece-icon.small {
-  width: 18px;
-  height: 12px;
+.brick-icon.small {
+  transform: scale(0.8);
+  transform-origin: left center;
+}
+
+.stud {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: inherit;
+  filter: brightness(0.75);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: inset 0 -1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .piece-name {
