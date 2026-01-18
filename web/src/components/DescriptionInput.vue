@@ -7,12 +7,12 @@
       <textarea
         v-model="localDescription"
         placeholder=""
-        maxlength="600"
+        maxlength="120"
         @input="updateDescription"
         @focus="isFocused = true"
         @blur="isFocused = false"
       ></textarea>
-      <span class="char-count">{{ localDescription.length }}/600</span>
+      <span class="char-count">{{ localDescription.length }}/120</span>
     </div>
 
     <div class="suggestions">
@@ -35,10 +35,13 @@ import { store, setDescription } from '../store'
 
 const suggestions = [
   { id: 1, label: 'Mushroom', text: 'mushroom' },
-  { id: 2, label: 'House', text: 'a small house' },
-  { id: 3, label: 'Mug', text: 'a mug' },
-  { id: 4, label: 'Banana', text: 'a banana' },
-  { id: 5, label: 'Dwayne the Block Johnson', text: "a realistic rendering of dwayne the rock johnson's face" }
+  { id: 2, label: 'House', text: 'small house' },
+  { id: 3, label: 'Mug', text: 'mug' },
+  { id: 4, label: 'Banana', text: 'banana' },
+  { id: 5, label: 'Dragon', text: 'small dragon' },
+  { id: 6, label: 'Creeper', text: 'minecraft creeper' },
+  { id: 7, label: 'Castle Tower', text: 'castle tower' },
+  { id: 8, label: 'Dwayne the Block Johnson', text: "realistic rendering of dwayne the rock johnson's face" }
 ]
 
 const localDescription = ref(store.description)
@@ -113,7 +116,7 @@ function selectSuggestion(text) {
 textarea {
   flex: 1;
   resize: none;
-  font-size: 20px;
+  font-size: 40px;
   line-height: 1.5;
   min-height: 150px;
   border: none;
@@ -135,21 +138,21 @@ textarea:focus {
 }
 
 .suggestions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
   gap: var(--spacing-sm);
 }
 
 .suggestion-btn {
-  flex: 1 1 auto;
-  min-width: fit-content;
   background: transparent;
   border: 2px dashed var(--lego-black);
   color: var(--lego-black);
-  font-size: 14px;
-  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 16px;
+  padding: var(--spacing-md) var(--spacing-lg);
   transition: all 0.2s ease;
   text-align: center;
+  font-weight: 600;
 }
 
 .suggestion-btn:hover {

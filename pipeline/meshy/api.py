@@ -40,8 +40,8 @@ async def generate_3d_model(
         output_dir: Directory to save the downloaded OBJ file
         art_style: "sculpture" (blocky, better for voxelization) or "realistic"
         timeout: Max seconds to wait for generation (default 5 minutes)
-        mode: Override mode - "test" (use cache), "cache" (query and cache),
-              "prod" (query only), "mock" (generate simple test OBJ)
+        mode: Override mode - "test" (use cache only), "cache" (query and cache),
+              "prod" (use cache if available, else query and cache), "mock" (generate simple test OBJ)
               If None, uses MESHY_MODE environment variable (default: "test")
 
     Returns:
@@ -87,7 +87,16 @@ async def generate_3d_model(
                 f"Run with MESHY_MODE=cache to generate and cache this model."
             )
 
-    # CACHE or PROD MODE: Query the API
+    # PROD MODE: Try cache first, then query if needed
+    if active_mode == "prod":
+        cached_path = _get_cached_model(description, art_style, output_dir)
+        if cached_path:
+            print(f"[PROD MODE] Using cached model for '{description}'")
+            return cached_path
+        else:
+            print(f"[PROD MODE] No cache found for '{description}', querying API...")
+
+    # CACHE or PROD MODE (no cache hit): Query the API
     if not MESHY_API_KEY:
         raise RuntimeError("MESHY_API_KEY environment variable not set")
 
@@ -102,10 +111,11 @@ async def generate_3d_model(
         # Step 3: Download OBJ file
         obj_path = await _download_obj(client, task_id, model_url, output_dir)
 
-        # CACHE MODE: Save to cache
-        if active_mode == "cache":
+        # CACHE or PROD MODE: Save to cache
+        if active_mode in ["cache", "prod"]:
             _cache_model(description, art_style, obj_path)
-            print(f"[CACHE MODE] Model generated and cached")
+            mode_label = "CACHE" if active_mode == "cache" else "PROD"
+            print(f"[{mode_label} MODE] Model generated and cached")
 
         return obj_path
 
