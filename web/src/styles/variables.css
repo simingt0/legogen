@@ -1,0 +1,37 @@
+:root {
+  /* LEGO Color Palette */
+  --lego-red: #DA291C;
+  --lego-yellow: #FFD700;
+  --lego-white: #FFFFFF;
+  --lego-black: #000000;
+
+  /* Semantic colors */
+  --color-primary: var(--lego-red);
+  --color-secondary: var(--lego-yellow);
+  --color-background: var(--lego-yellow);
+  --color-control-bg: var(--lego-white);
+  --color-control-text: var(--lego-black);
+  --color-control-border: var(--lego-black);
+
+  /* Additional colors for bricks */
+  --lego-blue: #0055BF;
+  --lego-green: #237841;
+  --lego-orange: #FFA500;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+}

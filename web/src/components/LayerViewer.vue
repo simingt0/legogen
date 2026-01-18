@@ -1,0 +1,240 @@
+<template>
+  <div class="layer-viewer">
+    <div class="header">
+      <button class="nav-btn" :disabled="currentLayer === 0" @click="prevLayer">&lt;</button>
+      <span class="layer-indicator">Layer {{ currentLayer + 1 }} of {{ totalLayers }}</span>
+      <button class="nav-btn" :disabled="currentLayer >= totalLayers - 1" @click="nextLayer">&gt;</button>
+    </div>
+
+    <div class="canvas-container">
+      <canvas ref="canvas"></canvas>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { store } from '../store'
+
+const emit = defineEmits(['update:currentLayer'])
+
+const props = defineProps({
+  currentLayer: {
+    type: Number,
+    default: 0
+  }
+})
+
+const canvas = ref(null)
+let ctx = null
+
+const BRICK_COLORS = [
+  '#DA291C', // red
+  '#0055BF', // blue
+  '#237841', // green
+  '#FFA500', // orange
+  '#FFD700', // yellow
+  '#800080', // purple
+  '#00CED1'  // cyan
+]
+
+const BRICK_DIMS = {
+  '1x1': [1, 1], '1x2': [1, 2], '1x3': [1, 3],
+  '1x4': [1, 4], '1x6': [1, 6], '2x2': [2, 2],
+  '2x3': [2, 3], '2x4': [2, 4], '2x6': [2, 6]
+}
+
+const totalLayers = computed(() => store.buildResult?.layers?.length || 0)
+
+const gridSize = computed(() => {
+  const dims = store.buildResult?.metadata?.voxel_dimensions
+  return dims ? { width: dims[0], depth: dims[1] } : { width: 10, depth: 10 }
+})
+
+function prevLayer() {
+  if (props.currentLayer > 0) {
+    emit('update:currentLayer', props.currentLayer - 1)
+  }
+}
+
+function nextLayer() {
+  if (props.currentLayer < totalLayers.value - 1) {
+    emit('update:currentLayer', props.currentLayer + 1)
+  }
+}
+
+function drawLayer() {
+  if (!canvas.value || !ctx) return
+
+  const canvasEl = canvas.value
+  const container = canvasEl.parentElement
+  canvasEl.width = container.clientWidth
+  canvasEl.height = container.clientHeight
+
+  const width = canvasEl.width
+  const height = canvasEl.height
+  const grid = gridSize.value
+
+  // Calculate cell size to fit
+  const padding = 40
+  const cellSize = Math.min(
+    (width - padding * 2) / grid.width,
+    (height - padding * 2) / grid.depth
+  )
+
+  const offsetX = (width - grid.width * cellSize) / 2
+  const offsetY = (height - grid.depth * cellSize) / 2
+
+  // Clear
+  ctx.fillStyle = '#FFD700'
+  ctx.fillRect(0, 0, width, height)
+
+  // Draw grid
+  ctx.strokeStyle = '#ccc'
+  ctx.lineWidth = 1
+  for (let x = 0; x <= grid.width; x++) {
+    ctx.beginPath()
+    ctx.moveTo(offsetX + x * cellSize, offsetY)
+    ctx.lineTo(offsetX + x * cellSize, offsetY + grid.depth * cellSize)
+    ctx.stroke()
+  }
+  for (let y = 0; y <= grid.depth; y++) {
+    ctx.beginPath()
+    ctx.moveTo(offsetX, offsetY + y * cellSize)
+    ctx.lineTo(offsetX + grid.width * cellSize, offsetY + y * cellSize)
+    ctx.stroke()
+  }
+
+  // Draw bricks
+  const layer = store.buildResult?.layers?.[props.currentLayer] || []
+  layer.forEach((brick, i) => {
+    const dims = BRICK_DIMS[brick.type] || [1, 1]
+    let w = dims[0]
+    let h = dims[1]
+
+    // Handle rotation
+    if (brick.rotation === 90) {
+      [w, h] = [h, w]
+    }
+
+    const bx = offsetX + brick.x * cellSize
+    const by = offsetY + brick.y * cellSize
+    const bw = w * cellSize
+    const bh = h * cellSize
+
+    // Brick fill
+    ctx.fillStyle = BRICK_COLORS[i % BRICK_COLORS.length]
+    ctx.fillRect(bx + 2, by + 2, bw - 4, bh - 4)
+
+    // Brick border
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = 2
+    ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4)
+
+    // Draw studs
+    ctx.fillStyle = darkenColor(BRICK_COLORS[i % BRICK_COLORS.length], 0.2)
+    const studRadius = cellSize * 0.2
+    for (let sx = 0; sx < w; sx++) {
+      for (let sy = 0; sy < h; sy++) {
+        const cx = bx + (sx + 0.5) * cellSize
+        const cy = by + (sy + 0.5) * cellSize
+        ctx.beginPath()
+        ctx.arc(cx, cy, studRadius, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  })
+}
+
+function darkenColor(hex, amount) {
+  const num = parseInt(hex.slice(1), 16)
+  const r = Math.max(0, (num >> 16) - Math.floor(255 * amount))
+  const g = Math.max(0, ((num >> 8) & 0x00FF) - Math.floor(255 * amount))
+  const b = Math.max(0, (num & 0x0000FF) - Math.floor(255 * amount))
+  return `rgb(${r},${g},${b})`
+}
+
+function handleKeydown(e) {
+  if (e.key === 'ArrowLeft') prevLayer()
+  if (e.key === 'ArrowRight') nextLayer()
+}
+
+function handleResize() {
+  drawLayer()
+}
+
+watch(() => props.currentLayer, drawLayer)
+watch(() => store.buildResult, drawLayer)
+
+onMounted(() => {
+  ctx = canvas.value.getContext('2d')
+  drawLayer()
+  window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', handleResize)
+})
+</script>
+
+<style scoped>
+.layer-viewer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--lego-white);
+  border: 3px solid var(--lego-black);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: #f5f5f5;
+  border-bottom: 3px solid var(--lego-black);
+}
+
+.nav-btn {
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+  font-weight: 900;
+  background: var(--lego-red);
+  color: white;
+  border: 3px solid var(--lego-black);
+  border-radius: var(--radius-md);
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: #b8231a;
+}
+
+.nav-btn:disabled {
+  background: #ccc;
+  color: #888;
+}
+
+.layer-indicator {
+  font-size: 18px;
+  font-weight: 700;
+  min-width: 150px;
+  text-align: center;
+}
+
+.canvas-container {
+  flex: 1;
+  min-height: 0;
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+</style>
