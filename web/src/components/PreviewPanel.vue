@@ -2,15 +2,8 @@
   <div class="preview-panel">
     <h2 class="title">Preview</h2>
 
-    <div class="preview-area">
-      <div class="placeholder">
-        <span class="placeholder-text">3D Preview</span>
-        <span class="placeholder-subtext">Coming Soon</span>
-      </div>
-    </div>
-
-    <div class="controls">
-      <button class="control-btn" @click="goToLanding">New Build</button>
+    <div class="side-view-area">
+      <SideView v-model:currentLayer="modelCurrentLayer" :viewAngle="viewAngle" @viewAngleChange="handleViewAngleChange" />
     </div>
 
     <div class="stats" v-if="metadata">
@@ -27,6 +20,10 @@
         <span class="stat-value">{{ layers }}</span>
       </div>
     </div>
+
+    <div class="controls">
+      <button class="control-btn" @click="goToLanding">New Build</button>
+    </div>
   </div>
 </template>
 
@@ -34,11 +31,34 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { store, resetForNewBuild } from '../store'
+import SideView from './SideView.vue'
+
+const props = defineProps({
+  currentLayer: {
+    type: Number,
+    default: 0
+  },
+  viewAngle: {
+    type: Number,
+    default: 0
+  }
+})
+
+const emit = defineEmits(['update:currentLayer', 'viewAngleChange'])
 
 const router = useRouter()
 
 const metadata = computed(() => store.buildResult?.metadata)
 const layers = computed(() => store.buildResult?.layers?.length || 0)
+
+const modelCurrentLayer = computed({
+  get: () => props.currentLayer,
+  set: (value) => emit('update:currentLayer', value)
+})
+
+function handleViewAngleChange(angle) {
+  emit('viewAngleChange', angle)
+}
 
 function goToLanding() {
   resetForNewBuild()
@@ -65,38 +85,10 @@ function goToLanding() {
   text-transform: uppercase;
 }
 
-.preview-area {
+.side-view-area {
   flex: 1;
-  min-height: 200px;
-  background: #f0f0f0;
-  border: 2px dashed #ccc;
-  border-radius: var(--radius-md);
+  min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.placeholder {
-  text-align: center;
-}
-
-.placeholder-text {
-  display: block;
-  font-size: 18px;
-  font-weight: 700;
-  color: #888;
-}
-
-.placeholder-subtext {
-  display: block;
-  font-size: 14px;
-  color: #aaa;
-  margin-top: var(--spacing-xs);
-}
-
-.controls {
-  display: flex;
-  gap: var(--spacing-sm);
 }
 
 .control-btn {
@@ -113,12 +105,18 @@ function goToLanding() {
   background: #b8231a;
 }
 
+.controls {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
 .stats {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  padding-top: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
   border-top: 2px solid #eee;
+  border-bottom: 2px solid #eee;
 }
 
 .stat {

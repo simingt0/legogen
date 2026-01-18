@@ -1,19 +1,19 @@
 <template>
   <div class="layer-viewer">
     <div class="header">
-      <button class="nav-btn arrow-btn" :disabled="currentLayer === 0" @click="prevLayer">
-        <div class="brick-arrow left">
-          <div class="arrow-row"><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span><span class="empty"></span></div>
-          <div class="arrow-row"><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span></div>
-          <div class="arrow-row"><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span><span class="empty"></span></div>
-        </div>
-      </button>
       <span class="layer-indicator">Layer {{ currentLayer + 1 }} of {{ totalLayers }}</span>
       <button class="nav-btn arrow-btn" :disabled="currentLayer >= totalLayers - 1" @click="nextLayer">
-        <div class="brick-arrow right">
-          <div class="arrow-row"><span class="empty"></span><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span></div>
-          <div class="arrow-row"><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span><span class="brick highlight"></span></div>
-          <div class="arrow-row"><span class="empty"></span><span class="empty"></span><span class="brick highlight"></span><span class="empty"></span></div>
+        <div class="brick-arrow up">
+          <div class="arrow-row"><span class="empty"></span><span class="empty"></span><span class="brick"></span><span class="empty"></span><span class="empty"></span></div>
+          <div class="arrow-row"><span class="empty"></span><span class="brick"></span><span class="brick"></span><span class="brick"></span><span class="empty"></span></div>
+          <div class="arrow-row"><span class="brick"></span><span class="brick"></span><span class="brick"></span><span class="brick"></span><span class="brick"></span></div>
+        </div>
+      </button>
+      <button class="nav-btn arrow-btn" :disabled="currentLayer === 0" @click="prevLayer">
+        <div class="brick-arrow down">
+          <div class="arrow-row"><span class="brick"></span><span class="brick"></span><span class="brick"></span><span class="brick"></span><span class="brick"></span></div>
+          <div class="arrow-row"><span class="empty"></span><span class="brick"></span><span class="brick"></span><span class="brick"></span><span class="empty"></span></div>
+          <div class="arrow-row"><span class="empty"></span><span class="empty"></span><span class="brick"></span><span class="empty"></span><span class="empty"></span></div>
         </div>
       </button>
     </div>
@@ -28,10 +28,14 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { store } from '../store'
 
-const emit = defineEmits(['update:currentLayer'])
+const emit = defineEmits(['update:currentLayer', 'rotateLeft', 'rotateRight'])
 
 const props = defineProps({
   currentLayer: {
+    type: Number,
+    default: 0
+  },
+  viewAngle: {
     type: Number,
     default: 0
   }
@@ -179,6 +183,32 @@ function drawLayer() {
   ctx.strokeStyle = '#000'
   ctx.lineWidth = 2
   ctx.strokeRect(offsetX, offsetY, gridWidth, gridHeight)
+
+  // Draw bold black line on the edge being viewed from
+  ctx.strokeStyle = '#000'
+  ctx.lineWidth = 6
+  ctx.beginPath()
+
+  switch(props.viewAngle) {
+    case 0: // Front view - top edge (viewing from +Y)
+      ctx.moveTo(offsetX, offsetY)
+      ctx.lineTo(offsetX + gridWidth, offsetY)
+      break
+    case 1: // Right view - left edge (viewing from +X)
+      ctx.moveTo(offsetX, offsetY)
+      ctx.lineTo(offsetX, offsetY + gridHeight)
+      break
+    case 2: // Back view - bottom edge (viewing from -Y)
+      ctx.moveTo(offsetX, offsetY + gridHeight)
+      ctx.lineTo(offsetX + gridWidth, offsetY + gridHeight)
+      break
+    case 3: // Left view - right edge (viewing from -X)
+      ctx.moveTo(offsetX + gridWidth, offsetY)
+      ctx.lineTo(offsetX + gridWidth, offsetY + gridHeight)
+      break
+  }
+
+  ctx.stroke()
 }
 
 function darkenColor(hex, amount) {
@@ -190,11 +220,22 @@ function darkenColor(hex, amount) {
 }
 
 function handleKeydown(e) {
-  if (e.key === 'ArrowLeft') prevLayer()
-  if (e.key === 'ArrowRight') nextLayer()
+  if (e.key === 'ArrowDown') prevLayer()
+  if (e.key === 'ArrowUp') nextLayer()
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault()
+    // Emit rotation event to parent
+    emit('rotateLeft')
+  }
+  if (e.key === 'ArrowRight') {
+    e.preventDefault()
+    // Emit rotation event to parent
+    emit('rotateRight')
+  }
 }
 
 watch(() => props.currentLayer, drawLayer)
+watch(() => props.viewAngle, drawLayer)
 watch(() => store.buildResult, drawLayer)
 
 onMounted(() => {
@@ -290,13 +331,7 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-.brick-arrow .brick.highlight {
-  background: var(--lego-yellow);
-}
 
-.brick-arrow .brick.highlight::after {
-  background: #e6c200;
-}
 
 .brick-arrow .empty {
   width: 12px;
@@ -311,13 +346,7 @@ onUnmounted(() => {
   background: #aaa;
 }
 
-.nav-btn:disabled .brick-arrow .brick.highlight {
-  background: #ddd;
-}
 
-.nav-btn:disabled .brick-arrow .brick.highlight::after {
-  background: #bbb;
-}
 
 .layer-indicator {
   font-size: 18px;

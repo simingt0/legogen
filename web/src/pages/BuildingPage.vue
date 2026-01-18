@@ -5,11 +5,11 @@
     </aside>
 
     <main class="layer-panel">
-      <LayerViewer v-model:currentLayer="currentLayer" />
+      <LayerViewer v-model:currentLayer="currentLayer" :viewAngle="viewAngle" @rotateLeft="handleRotateLeft" @rotateRight="handleRotateRight" />
     </main>
 
     <aside class="preview-panel">
-      <PreviewPanel />
+      <PreviewPanel v-model:currentLayer="currentLayer" :viewAngle="viewAngle" @viewAngleChange="handleViewAngleChange" />
     </aside>
   </div>
 </template>
@@ -24,6 +24,19 @@ import { store } from '../store'
 
 const router = useRouter()
 const currentLayer = ref(0)
+const viewAngle = ref(0)
+
+function handleViewAngleChange(angle) {
+  viewAngle.value = angle
+}
+
+function handleRotateLeft() {
+  viewAngle.value = (viewAngle.value + 3) % 4
+}
+
+function handleRotateRight() {
+  viewAngle.value = (viewAngle.value + 1) % 4
+}
 
 onMounted(() => {
   // Redirect to landing if no build result
@@ -52,7 +65,7 @@ onMounted(() => {
 }
 
 .preview-panel {
-  width: 280px;
+  width: 360px;
   flex-shrink: 0;
 }
 </style>

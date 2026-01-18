@@ -85,7 +85,7 @@ function getBrickStyle(type) {
   return {
     width: `${length * unitSize}px`,
     height: `${width * unitSize}px`,
-    backgroundColor: getBrickColor(type)
+    backgroundColor: '#666'  // Dark gray for all inventory bricks
   }
 }
 
