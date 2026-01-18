@@ -3,6 +3,7 @@ Classifier module - identifies LEGO bricks from an image
 Uses the inference pipeline script from model/inference_pipeline.py
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -85,7 +86,7 @@ def classify_bricks(image_bytes: bytes) -> dict[str, int]:
     Analyze an image and return counts of each brick type detected.
 
     Uses inference_pipeline.py script with YOLO + Brickognize.
-    Falls back to mock data if pipeline is not available.
+    Caches results based on image hash to avoid reprocessing.
 
     Args:
         image_bytes: Raw bytes of the uploaded image (JPEG or PNG)
@@ -97,13 +98,20 @@ def classify_bricks(image_bytes: bytes) -> dict[str, int]:
     if not image_bytes or len(image_bytes) < 100:
         raise ValueError("Cannot decode image: insufficient data")
 
-    # Try to use the real inference pipeline
-    try:
-        return _run_inference_pipeline(image_bytes)
-    except Exception as e:
-        print(f"[CLASSIFIER] Error during inference: {e}")
-        print("[CLASSIFIER] Falling back to mock data")
-        return _get_mock_inventory()
+    # Check cache first
+    image_hash = hashlib.md5(image_bytes).hexdigest()
+    cached_result = _get_cached_classification(image_hash)
+    if cached_result is not None:
+        print(f"   Using cached classification for image (hash: {image_hash[:8]}...)")
+        return cached_result
+
+    # Use the real inference pipeline - no fallback
+    result = _run_inference_pipeline(image_bytes)
+
+    # Cache the result
+    _cache_classification(image_hash, result)
+
+    return result
 
 
 def _run_inference_pipeline(image_bytes: bytes) -> dict[str, int]:
@@ -126,7 +134,10 @@ def _run_inference_pipeline(image_bytes: bytes) -> dict[str, int]:
     # Find the YOLO model
     model_path = _find_yolo_model()
     if model_path is None:
-        raise FileNotFoundError("YOLO model not found")
+        raise FileNotFoundError(
+            "YOLO model not found. Please ensure the model exists at model/weights/best.pt "
+            "or set YOLO_MODEL_PATH environment variable."
+        )
 
     # Save image bytes to temporary file
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_image:
@@ -168,12 +179,11 @@ def _run_inference_pipeline(image_bytes: bytes) -> dict[str, int]:
         # Convert to inventory
         inventory = _convert_detections_to_inventory(detections)
 
-        # If we got very few bricks, supplement with mock data
         total_bricks = sum(inventory.values())
-        if total_bricks < 50:
-            mock = _get_mock_inventory()
-            for brick_type, count in mock.items():
-                inventory[brick_type] = inventory.get(brick_type, 0) + count
+        if total_bricks == 0:
+            raise ValueError(
+                "No bricks detected in image. Please ensure the image contains visible LEGO bricks."
+            )
 
         return inventory
 
@@ -249,21 +259,47 @@ def _convert_detections_to_inventory(detections: list) -> dict[str, int]:
     return inventory
 
 
-def _get_mock_inventory() -> dict[str, int]:
+def _get_cache_dir() -> Path:
+    """Get the cache directory for classifier results."""
+    cache_dir = Path(__file__).parent / "cache"
+    cache_dir.mkdir(exist_ok=True)
+    return cache_dir
+
+
+def _get_cached_classification(image_hash: str) -> dict[str, int] | None:
     """
-    Get a mock brick inventory with generous amounts.
+    Get cached classification results for an image hash.
+
+    Args:
+        image_hash: MD5 hash of the image bytes
 
     Returns:
-        Mock inventory dict
+        Cached brick inventory or None if not cached
     """
-    return {
-        "2x6": 100,
-        "2x4": 200,
-        "2x3": 150,
-        "2x2": 250,
-        "1x6": 100,
-        "1x4": 200,
-        "1x3": 150,
-        "1x2": 300,
-        "1x1": 500,
-    }
+    cache_file = _get_cache_dir() / f"{image_hash}.json"
+
+    if not cache_file.exists():
+        return None
+
+    try:
+        with open(cache_file, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
+def _cache_classification(image_hash: str, inventory: dict[str, int]) -> None:
+    """
+    Cache classification results for an image hash.
+
+    Args:
+        image_hash: MD5 hash of the image bytes
+        inventory: Brick inventory to cache
+    """
+    cache_file = _get_cache_dir() / f"{image_hash}.json"
+
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(inventory, f, indent=2)
+    except IOError as e:
+        print(f"Warning: Failed to cache classification: {e}")

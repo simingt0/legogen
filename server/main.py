@@ -15,10 +15,31 @@ from pydantic import BaseModel
 # Add parent directory to path so we can import pipeline
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from pipeline.builder import generate_build_instructions
+from pipeline.builder import BRICK_DIMS, generate_build_instructions
 from pipeline.classifier import classify_bricks
 from pipeline.meshy import generate_3d_model
 from pipeline.voxelizer import voxelize_mesh
+
+# Color codes for terminal output
+BRICK_COLORS = [
+    "\033[91m",  # Bright Red
+    "\033[92m",  # Bright Green
+    "\033[93m",  # Bright Yellow
+    "\033[94m",  # Bright Blue
+    "\033[95m",  # Bright Magenta
+    "\033[96m",  # Bright Cyan
+    "\033[97m",  # Bright White
+    "\033[31m",  # Red
+    "\033[32m",  # Green
+    "\033[33m",  # Yellow
+    "\033[34m",  # Blue
+    "\033[35m",  # Magenta
+    "\033[36m",  # Cyan
+]
+
+BRICK_PATTERNS = ["█", "▓", "▒", "░", "▪", "▫", "●", "○", "◆", "◇", "■", "□"]
+
+RESET_COLOR = "\033[0m"
 
 app = FastAPI(title="LegoGen", description="LEGO build instruction generator")
 
@@ -77,7 +98,7 @@ async def build(request: Request):
         form = await request.form()
         description = form.get("description")
         image = form.get("image")
-        voxel_size = int(form.get("voxel_size", 16))
+        voxel_size = int(form.get("voxel_size", 10))
         max_attempts = int(form.get("max_attempts", 5))
 
     except Exception as e:
@@ -143,40 +164,41 @@ async def build(request: Request):
         filled_voxels = voxel_grid.sum()
         print(f"   ✅ Voxelized: {voxel_grid.shape}, {filled_voxels:,} voxels filled\n")
 
-        # Step 4: Try to generate build instructions
+        # Step 4: Generate build instructions (Algorithm 7 handles retries internally)
         print(f"🧱 Step 4: Generating build instructions...")
 
-        result = None
-        for attempt in range(max_attempts):
-            metadata.attempts = attempt + 1
+        result = generate_build_instructions(voxel_grid, available_bricks.copy())
+        metadata.attempts = 1
 
-            # Make a copy of available_bricks since builder modifies it
-            bricks_copy = available_bricks.copy()
-            result = generate_build_instructions(voxel_grid, bricks_copy)
+        if result["success"]:
+            # Count total bricks used
+            total = sum(len(layer) for layer in result["layers"])
+            metadata.total_bricks = total
 
-            if result["success"]:
-                # Count total bricks used
-                total = sum(len(layer) for layer in result["layers"])
-                metadata.total_bricks = total
+            print(f"   ✅ Success!")
 
-                print(f"   ✅ Success on attempt {attempt + 1}!")
-                print(f"\n{'=' * 70}")
-                print(f"✅ BUILD COMPLETE")
-                print(f"{'=' * 70}")
+            # Print color-coded visualization
+            _print_build_visualization(result["layers"], voxel_grid.shape)
+
+            print(f"\n{'=' * 70}")
+            print(f"✅ BUILD COMPLETE")
+            print(f"{'=' * 70}")
+            print(f"Layers: {len(result['layers'])} | Bricks: {total}")
+            if "total_cells_skipped" in result:
                 print(
-                    f"Layers: {len(result['layers'])} | Bricks: {total} | Attempts: {attempt + 1}"
+                    f"Total cells skipped: {result['total_cells_skipped']} (tolerance: {result.get('total_tolerance', 0)})"
                 )
-                print(f"{'=' * 70}\n")
+            print(f"{'=' * 70}\n")
 
-                return BuildResponse(
-                    success=True,
-                    layers=result["layers"],
-                    error=None,
-                    metadata=metadata,
-                )
+            return BuildResponse(
+                success=True,
+                layers=result["layers"],
+                error=None,
+                metadata=metadata,
+            )
 
-        # All attempts failed
-        error_msg = f"Failed to generate build after {max_attempts} attempts"
+        # Build failed
+        error_msg = result.get("error", "Failed to generate build")
 
         print(f"\n{'=' * 70}")
         print(f"❌ BUILD FAILED")
@@ -236,6 +258,81 @@ async def build(request: Request):
             error=error_msg,
             metadata=metadata,
         )
+
+
+def _print_build_visualization(layers: list, voxel_shape: tuple):
+    """Print color-coded visualization of build instructions."""
+    width, depth, height = voxel_shape
+
+    print(f"\n{'=' * 70}")
+    print("BUILD INSTRUCTIONS VISUALIZATION")
+    print(f"{'=' * 70}\n")
+
+    for z, layer in enumerate(layers):
+        if len(layer) == 0:
+            continue
+
+        print(f">>> LAYER {z} <<<")
+        print(f"    Bricks: {len(layer)}")
+
+        # Create visual grid
+        display = [[-1 for _ in range(width)] for _ in range(depth)]
+        color_map = {}
+
+        # Assign colors to each brick
+        for i, brick in enumerate(layer):
+            color = BRICK_COLORS[i % len(BRICK_COLORS)]
+            pattern = BRICK_PATTERNS[i % len(BRICK_PATTERNS)]
+            color_map[i] = (color, pattern)
+
+            brick_w, brick_l = BRICK_DIMS[brick["type"]]
+
+            if brick["rotation"] == 0:
+                dx, dy = brick_l, brick_w
+            else:
+                dx, dy = brick_w, brick_l
+
+            # Mark cells with brick index
+            for j in range(dx):
+                for k in range(dy):
+                    x_pos = brick["x"] + j
+                    y_pos = brick["y"] + k
+                    if 0 <= x_pos < width and 0 <= y_pos < depth:
+                        display[y_pos][x_pos] = i
+
+        # Print visual grid
+        print("\n    " + "─" * (width * 2 + 1))
+        for y in range(depth):
+            row_str = "    │"
+            for x in range(width):
+                cell = display[y][x]
+                if cell == -1:
+                    row_str += " │"
+                else:
+                    color, pattern = color_map[cell]
+                    row_str += f"{color}{pattern}{RESET_COLOR}│"
+            print(row_str)
+            print("    " + "─" * (width * 2 + 1))
+
+        # Print legend
+        print("\n    Legend:")
+        for i, brick in enumerate(layer):
+            color, pattern = color_map[i]
+            brick_type = brick["type"]
+            x, y = brick["x"], brick["y"]
+            rotation = brick["rotation"]
+
+            brick_w, brick_l = BRICK_DIMS[brick_type]
+            if rotation == 0:
+                dims_str = f"{brick_l}×{brick_w}"
+            else:
+                dims_str = f"{brick_w}×{brick_l}"
+
+            print(
+                f"      {color}{pattern}{RESET_COLOR} {brick_type} at ({x},{y}) [{dims_str}]"
+            )
+
+        print()
 
 
 if __name__ == "__main__":

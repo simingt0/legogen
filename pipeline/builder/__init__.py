@@ -9,6 +9,9 @@ from .algorithm3 import Algorithm3
 from .algorithm4 import Algorithm4
 from .algorithm5 import Algorithm5
 from .algorithm6 import Algorithm6
+from .algorithm7 import Algorithm7
+from .algorithm8 import Algorithm8
+from .algorithm9 import Algorithm9
 from .base import BRICK_DIMS, BRICKS_BY_SIZE, BuilderAlgorithm
 
 # Available algorithms
@@ -20,6 +23,9 @@ ALGORITHMS = {
     "algorithm4": Algorithm4,
     "algorithm5": Algorithm5,
     "algorithm6": Algorithm6,
+    "algorithm7": Algorithm7,
+    "algorithm8": Algorithm8,
+    "algorithm9": Algorithm9,
 }
 
 
@@ -72,4 +78,7 @@ __all__ = [
     "Algorithm4",
     "Algorithm5",
     "Algorithm6",
+    "Algorithm7",
+    "Algorithm8",
+    "Algorithm9",
 ]

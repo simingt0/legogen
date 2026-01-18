@@ -315,9 +315,12 @@ def generate_build_instructions(
     available_bricks: dict[str, int],
 ) -> dict:
     """
-    Generate LEGO build instructions from a voxel grid using Algorithm 0.
+    Generate LEGO build instructions from a voxel grid using Algorithm 7.
 
     This is a wrapper function for backward compatibility.
+    Uses Algorithm 9 (Floating Component Bonus) by default.
     """
-    algorithm = Algorithm0()
+    from .algorithm9 import Algorithm9
+
+    algorithm = Algorithm9()
     return algorithm.build(voxel_grid, available_bricks)
