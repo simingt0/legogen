@@ -39,7 +39,6 @@ ENV/
 
 # Generated 3D models and temp files
 /tmp/
-*.obj
 *.glb
 *.mtl
 *.stl
