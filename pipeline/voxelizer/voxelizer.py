@@ -3,6 +3,7 @@ Voxelizer module - converts OBJ mesh to voxel grid
 See plan.md for full specification
 """
 
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -63,7 +64,8 @@ def voxelize_mesh(obj_path: str, size: int = 16) -> np.ndarray:
     if max_dimension == 0:
         raise ValueError("Mesh has zero size")
 
-    pitch = max_dimension / size
+    # Calculate pitch based on size-1 to ensure we don't exceed requested size
+    pitch = max_dimension / (size - 1)
 
     # Voxelize the mesh
     try:
@@ -84,4 +86,88 @@ def voxelize_mesh(obj_path: str, size: int = 16) -> np.ndarray:
     print(f"  Pitch (voxel size): {pitch:.4f}")
     print(f"  Filled voxels: {voxel_matrix.sum()} / {voxel_matrix.size}")
 
+    # Swap Y and Z axes so Z is vertical (up)
+    # trimesh voxelizes with Y as up, but we need Z as up for layer-by-layer building
+    voxel_matrix = np.transpose(voxel_matrix, (0, 2, 1))
+    print(f"  After axis swap (Y↔Z): {voxel_matrix.shape} voxels")
+
+    # Extract only the largest connected component
+    voxel_matrix = _extract_largest_component(voxel_matrix)
+    print(f"  After extracting largest component: {voxel_matrix.sum()} voxels")
+
     return voxel_matrix
+
+
+def _extract_largest_component(voxels: np.ndarray) -> np.ndarray:
+    """
+    Extract only the largest connected component from the voxel grid.
+    Voxels are considered connected if they share a face (6-connectivity).
+
+    Returns:
+        New voxel grid containing only the largest connected component
+    """
+    if not np.any(voxels):
+        return voxels
+
+    visited = np.zeros_like(voxels, dtype=bool)
+    components = []
+
+    # Find all connected components
+    for x in range(voxels.shape[0]):
+        for y in range(voxels.shape[1]):
+            for z in range(voxels.shape[2]):
+                if voxels[x, y, z] and not visited[x, y, z]:
+                    # BFS to find this component
+                    component = _bfs_component(voxels, visited, (x, y, z))
+                    components.append(component)
+
+    if not components:
+        return voxels
+
+    # Find largest component
+    largest = max(components, key=len)
+
+    # Create new voxel grid with only largest component
+    result = np.zeros_like(voxels, dtype=bool)
+    for x, y, z in largest:
+        result[x, y, z] = True
+
+    return result
+
+
+def _bfs_component(voxels: np.ndarray, visited: np.ndarray, start: tuple) -> list:
+    """
+    BFS to find all voxels in a connected component starting from `start`.
+
+    Returns:
+        List of (x, y, z) tuples in the component
+    """
+    component = []
+    queue = deque([start])
+    visited[start] = True
+
+    width, depth, height = voxels.shape
+
+    while queue:
+        x, y, z = queue.popleft()
+        component.append((x, y, z))
+
+        # Check 6 neighbors (face-connected)
+        for dx, dy, dz in [
+            (-1, 0, 0),
+            (1, 0, 0),
+            (0, -1, 0),
+            (0, 1, 0),
+            (0, 0, -1),
+            (0, 0, 1),
+        ]:
+            nx, ny, nz = x + dx, y + dy, z + dz
+
+            # Check bounds
+            if 0 <= nx < width and 0 <= ny < depth and 0 <= nz < height:
+                # Check if filled and not visited
+                if voxels[nx, ny, nz] and not visited[nx, ny, nz]:
+                    visited[nx, ny, nz] = True
+                    queue.append((nx, ny, nz))
+
+    return component
