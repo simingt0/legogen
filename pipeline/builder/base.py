@@ -74,6 +74,7 @@ BRICK_DIMS = {
     "2x3": (2, 3),
     "2x4": (2, 4),
     "2x6": (2, 6),
+    "2x8": (2, 8),
 }
 
 # Sorted by area descending for placement priority

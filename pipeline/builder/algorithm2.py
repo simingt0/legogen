@@ -12,6 +12,7 @@ from .base import BRICK_DIMS, BuilderAlgorithm
 
 # Custom brick priority order (largest length first, then by width)
 CUSTOM_BRICK_ORDER = [
+    "2x8",
     "2x6",
     "1x6",
     "2x4",
@@ -37,7 +38,7 @@ class Algorithm2(BuilderAlgorithm):
     - Move to next brick type in priority order
     - If layer cannot be completely filled, fail
 
-    Priority order: 2x6, 1x6, 2x4, 1x4, 2x3, 1x3, 2x2, 1x2, 1x1
+    Priority order: 2x8, 2x6, 1x6, 2x4, 1x4, 2x3, 1x3, 2x2, 1x2, 1x1
     (Prioritizes length over width)
     """
 
@@ -48,7 +49,7 @@ class Algorithm2(BuilderAlgorithm):
     @property
     def description(self) -> str:
         return (
-            "Exhaustively places bricks in custom priority order (2x6, 1x6, 2x4, 1x4, "
+            "Exhaustively places bricks in custom priority order (2x8, 2x6, 1x6, 2x4, 1x4, "
             "2x3, 1x3, 2x2, 1x2, 1x1). Prioritizes length over width."
         )
 

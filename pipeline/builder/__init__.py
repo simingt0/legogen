@@ -5,6 +5,10 @@ LEGO Builder Module - Multiple algorithm implementations
 from .algorithm0 import Algorithm0, generate_build_instructions
 from .algorithm1 import Algorithm1
 from .algorithm2 import Algorithm2
+from .algorithm3 import Algorithm3
+from .algorithm4 import Algorithm4
+from .algorithm5 import Algorithm5
+from .algorithm6 import Algorithm6
 from .base import BRICK_DIMS, BRICKS_BY_SIZE, BuilderAlgorithm
 
 # Available algorithms
@@ -12,6 +16,10 @@ ALGORITHMS = {
     "algorithm0": Algorithm0,
     "algorithm1": Algorithm1,
     "algorithm2": Algorithm2,
+    "algorithm3": Algorithm3,
+    "algorithm4": Algorithm4,
+    "algorithm5": Algorithm5,
+    "algorithm6": Algorithm6,
 }
 
 
@@ -60,4 +68,8 @@ __all__ = [
     "Algorithm0",
     "Algorithm1",
     "Algorithm2",
+    "Algorithm3",
+    "Algorithm4",
+    "Algorithm5",
+    "Algorithm6",
 ]

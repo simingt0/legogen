@@ -15,6 +15,54 @@ import numpy as np
 from pipeline.builder import BRICK_DIMS, get_algorithm, list_algorithms
 from pipeline.voxelizer import voxelize_mesh
 
+# Color codes for terminal output (bright variants for better visibility)
+BRICK_COLORS = [
+    "\033[91m",  # Bright Red
+    "\033[92m",  # Bright Green
+    "\033[93m",  # Bright Yellow
+    "\033[94m",  # Bright Blue
+    "\033[95m",  # Bright Magenta
+    "\033[96m",  # Bright Cyan
+    "\033[97m",  # Bright White
+    "\033[31m",  # Red
+    "\033[32m",  # Green
+    "\033[33m",  # Yellow
+    "\033[34m",  # Blue
+    "\033[35m",  # Magenta
+    "\033[36m",  # Cyan
+    "\033[90m",  # Gray
+    "\033[31;1m",  # Bold Red
+    "\033[32;1m",  # Bold Green
+    "\033[33;1m",  # Bold Yellow
+    "\033[34;1m",  # Bold Blue
+    "\033[35;1m",  # Bold Magenta
+    "\033[36;1m",  # Bold Cyan
+]
+
+# Pattern characters for even more differentiation
+BRICK_PATTERNS = [
+    "█",
+    "▓",
+    "▒",
+    "░",
+    "▪",
+    "▫",
+    "●",
+    "○",
+    "◆",
+    "◇",
+    "■",
+    "□",
+    "▲",
+    "△",
+    "▼",
+    "▽",
+    "★",
+    "☆",
+]
+
+RESET_COLOR = "\033[0m"
+
 
 def test_simple_shapes():
     """Test builder with simple geometric shapes"""
@@ -147,19 +195,23 @@ def test_with_voxelized_model(
 
     # Generate build instructions with retry
     print("\nStep 4: Generating build instructions...")
-    max_attempts = 16
+    max_attempts = 64
 
     try:
         result = None
         for attempt in range(1, max_attempts + 1):
-            print(f"   Attempt {attempt}/{max_attempts}...", end=" ")
+            print(f"Try #{attempt}...", end="\r")
             result = algorithm.build(voxels, bricks.copy())
 
             if result["success"]:
-                print("✅ Success!")
+                print(f"✅ Success on attempt {attempt}!")
+
+                # Show layer processing order if available
+                if "layer_order" in result:
+                    order_str = "→".join(str(z) for z in result["layer_order"])
+                    print(f"   Layer processing order: {order_str}")
+
                 break
-            else:
-                print(f"Failed - {result['error']}")
 
         if result and result["success"]:
             print(
@@ -190,13 +242,16 @@ def test_with_voxelized_model(
                 print(f"\n>>> LAYER {z} <<<")
                 print(f"    Bricks: {len(layer)}")
 
-                # Create visual grid for this layer
-                brick_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-                display = [[" " for _ in range(width)] for _ in range(depth)]
+                # Create visual grid for this layer with colors
+                display = [[-1 for _ in range(width)] for _ in range(depth)]
+                color_map = {}
 
-                # Assign letters to each brick
+                # Assign colors and patterns to each brick
                 for i, brick in enumerate(layer):
-                    char = brick_chars[i % len(brick_chars)]
+                    color = BRICK_COLORS[i % len(BRICK_COLORS)]
+                    pattern = BRICK_PATTERNS[i % len(BRICK_PATTERNS)]
+                    color_map[i] = (color, pattern)
+
                     brick_w, brick_l = BRICK_DIMS[brick["type"]]
 
                     if brick["rotation"] == 0:
@@ -204,39 +259,45 @@ def test_with_voxelized_model(
                     else:
                         dx, dy = brick_w, brick_l
 
-                    # Mark cells
+                    # Mark cells with brick index
                     for j in range(dx):
                         for k in range(dy):
                             x_pos = brick["x"] + j
                             y_pos = brick["y"] + k
                             if 0 <= x_pos < width and 0 <= y_pos < depth:
-                                display[y_pos][x_pos] = char
+                                display[y_pos][x_pos] = i
 
-                # Print visual grid
+                # Print visual grid with colors
                 print("\n    " + "─" * (width * 2 + 1))
                 for y in range(depth):
                     row_str = "    │"
                     for x in range(width):
-                        row_str += display[y][x] + "│"
+                        cell = display[y][x]
+                        if cell == -1:
+                            row_str += " │"
+                        else:
+                            color, pattern = color_map[cell]
+                            row_str += f"{color}{pattern}{RESET_COLOR}│"
                     print(row_str)
                     print("    " + "─" * (width * 2 + 1))
 
-                # Print legend
+                # Print legend with colors and patterns
                 print("\n    Legend:")
                 for i, brick in enumerate(layer):
-                    char = brick_chars[i % len(brick_chars)]
+                    color, pattern = color_map[i]
                     brick_type = brick["type"]
                     x, y = brick["x"], brick["y"]
                     rotation = brick["rotation"]
 
-                    # Get brick dimensions
                     brick_w, brick_l = BRICK_DIMS[brick_type]
                     if rotation == 0:
                         dims_str = f"{brick_l}×{brick_w} (horizontal)"
                     else:
                         dims_str = f"{brick_w}×{brick_l} (vertical)"
 
-                    print(f"      [{char}] {brick_type} at ({x},{y}) - {dims_str}")
+                    print(
+                        f"      {color}{pattern}{RESET_COLOR} {brick_type} at ({x},{y}) - {dims_str}"
+                    )
 
             # Show brick type usage
             print("\n   Brick type usage:")
@@ -253,7 +314,7 @@ def test_with_voxelized_model(
         else:
             print(f"\n❌ Failed after {max_attempts} attempts")
             if result:
-                print(f"   Last error: {result['error']}")
+                print(f"   Error: {result['error']}")
 
     except Exception as e:
         print(f"❌ Error: {e}")

@@ -95,6 +95,10 @@ def voxelize_mesh(obj_path: str, size: int = 16) -> np.ndarray:
     voxel_matrix = _extract_largest_component(voxel_matrix)
     print(f"  After extracting largest component: {voxel_matrix.sum()} voxels")
 
+    # Fill enclosed spaces (but keep holes/openings)
+    voxel_matrix = _fill_enclosed_spaces(voxel_matrix)
+    print(f"  After filling enclosed spaces: {voxel_matrix.sum()} voxels")
+
     return voxel_matrix
 
 
@@ -171,3 +175,75 @@ def _bfs_component(voxels: np.ndarray, visited: np.ndarray, start: tuple) -> lis
                     queue.append((nx, ny, nz))
 
     return component
+
+
+def _fill_enclosed_spaces(voxels: np.ndarray) -> np.ndarray:
+    """
+    Fill completely enclosed spaces in the voxel grid.
+    Uses flood fill from outside - anything not reachable from outside is enclosed.
+
+    Returns:
+        Voxel grid with enclosed spaces filled
+    """
+    if not np.any(voxels):
+        return voxels
+
+    width, depth, height = voxels.shape
+
+    # Create a grid to track what's reachable from outside
+    reachable = np.zeros_like(voxels, dtype=bool)
+
+    # Start flood fill from all border voxels that are empty
+    # These represent the "outside" of the model
+    queue = deque()
+
+    # Add all empty border cells to queue
+    for x in range(width):
+        for y in range(depth):
+            for z in range(height):
+                # Check if on border
+                on_border = (
+                    x == 0
+                    or x == width - 1
+                    or y == 0
+                    or y == depth - 1
+                    or z == 0
+                    or z == height - 1
+                )
+
+                if on_border and not voxels[x, y, z]:
+                    queue.append((x, y, z))
+                    reachable[x, y, z] = True
+
+    # Flood fill to mark all reachable empty spaces
+    while queue:
+        x, y, z = queue.popleft()
+
+        # Check all 6 neighbors
+        for dx, dy, dz in [
+            (-1, 0, 0),
+            (1, 0, 0),
+            (0, -1, 0),
+            (0, 1, 0),
+            (0, 0, -1),
+            (0, 0, 1),
+        ]:
+            nx, ny, nz = x + dx, y + dy, z + dz
+
+            # Check bounds
+            if 0 <= nx < width and 0 <= ny < depth and 0 <= nz < height:
+                # If empty and not yet marked as reachable
+                if not voxels[nx, ny, nz] and not reachable[nx, ny, nz]:
+                    reachable[nx, ny, nz] = True
+                    queue.append((nx, ny, nz))
+
+    # Create result: filled voxels + unreachable empty spaces (enclosed)
+    result = voxels.copy()
+    for x in range(width):
+        for y in range(depth):
+            for z in range(height):
+                # If empty and not reachable from outside, it's enclosed - fill it
+                if not voxels[x, y, z] and not reachable[x, y, z]:
+                    result[x, y, z] = True
+
+    return result
