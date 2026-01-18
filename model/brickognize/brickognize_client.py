@@ -48,75 +48,44 @@ class BrickognizeClient:
         Initialize client.
         
         Args:
-            api_key: API key for Brickognize
+            api_key: API key for Brickognize (optional for free tier)
             base_url: Base URL for the API
         """
         self.api_key = api_key or os.getenv("BRICKOGNIZE_API_KEY")
         self.base_url = base_url
         self.session = None
-        
-        if not self.api_key:
-            raise ValueError("API key is required. Set BRICKOGNIZE_API_KEY environment variable or pass api_key parameter.")
     
     async def __aenter__(self):
         """Async context manager entry."""
-        self.session = aiohttp.ClientSession(
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "User-Agent": "LegoGen-Brickognize-Client/1.0"
-            }
-        )
+        headers = {
+            "User-Agent": "LegoGen-Brickognize-Client/1.0",
+            "Accept": "application/json"
+        }
+        
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+            
+        self.session = aiohttp.ClientSession(headers=headers)
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         if self.session:
             await self.session.close()
-    
-    def identify_brick_from_file(self, image_path: str, crop_coordinates: Tuple[int, int, int, int] = None) -> Dict:
-        """
-        Identify LEGO brick from image file.
-        
-        Args:
-            image_path: Path to image file
-            crop_coordinates: Optional crop coordinates (x1, y1, x2, y2)
-            
-        Returns:
-            API response with brick identification results
-        """
-        # Load and preprocess image
-        image = self.load_and_preprocess_image(image_path, crop_coordinates)
-        
-        # Convert to base64
-        image_base64 = self.image_to_base64(image)
-        
-        # Make API call
-        return self.identify_brick(image_base64)
-    
-    def identify_brick_from_array(self, image_array: np.ndarray, crop_coordinates: Tuple[int, int, int, int] = None) -> Dict:
-        """
-        Identify LEGO brick from numpy array.
-        
-        Args:
-            image_array: Image as numpy array
-            crop_coordinates: Optional crop coordinates (x1, y1, x2, y2)
-            
-        Returns:
-            API response with brick identification results
-        """
-        # Preprocess image
-        image = self.preprocess_image_array(image_array, crop_coordinates)
-        
-        # Convert to base64
-        image_base64 = self.image_to_base64(image)
-        
-        # Make API call
-        return self.identify_brick(image_base64)
-    
+
+    def _get_sync_headers(self) -> Dict:
+        """Gets headers for synchronous requests."""
+        headers = {
+            "User-Agent": "LegoGen-Brickognize-Client/1.0",
+            "Accept": "application/json"
+        }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
+
     def identify_brick_from_detection(self, original_image: np.ndarray, detection_bbox: List[float]) -> Dict:
         """
-        Identify LEGO brick from a detected bounding box.
+        Identify LEGO brick from a detected bounding box (SYNC).
         
         Args:
             original_image: Original image as numpy array
@@ -125,44 +94,49 @@ class BrickognizeClient:
         Returns:
             API response with brick identification results
         """
-        # Crop image to bounding box
-        x1, y1, x2, y2 = map(int, detection_bbox)
-        cropped_image = original_image[y1:y2, x1:x2]
-        
-        # Add padding for better identification
-        cropped_image = self.add_padding(cropped_image, padding_ratio=0.1)
-        
-        # Convert to base64
-        image_base64 = self.image_to_base64(cropped_image)
-        
-        # Make API call
-        return self.identify_brick(image_base64)
-    
-    def identify_brick(self, image_base64: str) -> Dict:
+        pil_image = self._prepare_image_from_detection(original_image, detection_bbox)
+        image_bytes = self.image_to_bytes(pil_image)
+        return self.identify_brick(image_bytes)
+
+    async def identify_brick_from_detection_async(self, original_image: np.ndarray, detection_bbox: List[float]) -> Dict:
         """
-        Identify LEGO brick from base64 encoded image.
+        Identify LEGO brick from a detected bounding box (ASYNC).
         
         Args:
-            image_base64: Base64 encoded image
+            original_image: Original image as numpy array
+            detection_bbox: Bounding box [x1, y1, x2, y2] from detection
             
         Returns:
             API response with brick identification results
         """
-        url = f"{self.base_url}/identify"
+        pil_image = self._prepare_image_from_detection(original_image, detection_bbox)
+        image_bytes = self.image_to_bytes(pil_image)
+        return await self.identify_brick_async(image_bytes)
+
+    def _prepare_image_from_detection(self, original_image: np.ndarray, detection_bbox: List[float]) -> Image.Image:
+        """Crops, pads, and converts a detected region to a PIL Image."""
+        x1, y1, x2, y2 = map(int, detection_bbox)
+        cropped_image = original_image[y1:y2, x1:x2]
+        padded_image = self.add_padding(cropped_image, padding_ratio=0.1)
+        return Image.fromarray(cv2.cvtColor(padded_image, cv2.COLOR_BGR2RGB))
+
+    def identify_brick(self, image_bytes: bytes) -> Dict:
+        """
+        Identify LEGO brick from image bytes (SYNC).
         
-        payload = {
-            "image": image_base64,
-            "top_k": 5,  # Return top 5 predictions
-            "include_metadata": True,
-            "include_images": True
-        }
+        Args:
+            image_bytes: Image file contents as bytes
+            
+        Returns:
+            API response with brick identification results
+        """
+        url = f"{self.base_url}/predict/"
+        files = {'query_image': ('image.jpg', image_bytes, 'image/jpeg')}
         
         try:
-            response = requests.post(url, json=payload, timeout=30)
+            response = requests.post(url, headers=self._get_sync_headers(), files=files, timeout=30)
             response.raise_for_status()
-            
             return response.json()
-            
         except requests.exceptions.RequestException as e:
             print(f"API request failed: {e}")
             return {"error": str(e), "predictions": []}
@@ -170,33 +144,37 @@ class BrickognizeClient:
             print(f"Failed to parse JSON response: {e}")
             return {"error": "Invalid JSON response", "predictions": []}
     
-    async def identify_brick_async(self, image_base64: str) -> Dict:
+    async def identify_brick_async(self, image_bytes: bytes) -> Dict:
         """
-        Async version of identify_brick.
+        Identify LEGO brick from image bytes (ASYNC).
         
         Args:
-            image_base64: Base64 encoded image
+            image_bytes: Image file contents as bytes
             
         Returns:
             API response with brick identification results
         """
-        url = f"{self.base_url}/identify"
+        url = f"{self.base_url}/predict/"
         
-        payload = {
-            "image": image_base64,
-            "top_k": 5,
-            "include_metadata": True,
-            "include_images": True
-        }
+        data = aiohttp.FormData()
+        data.add_field('query_image',
+                       image_bytes,
+                       filename='image.jpg',
+                       content_type='image/jpeg')
         
         try:
-            async with self.session.post(url, json=payload) as response:
+            print(f"Sending request to {url}...")
+            async with self.session.post(url, data=data) as response:
+                response_text = await response.text()
+                print(f"Received response (status {response.status}): {response_text}")
                 response.raise_for_status()
                 return await response.json()
-                
         except aiohttp.ClientError as e:
             print(f"Async API request failed: {e}")
             return {"error": str(e), "predictions": []}
+        except json.JSONDecodeError:
+            print(f"Failed to decode JSON from response: {response_text}")
+            return {"error": "Invalid JSON response", "predictions": []}
     
     def load_and_preprocess_image(self, image_path: str, crop_coordinates: Tuple[int, int, int, int] = None) -> Image.Image:
         """Load and preprocess image."""
@@ -251,12 +229,11 @@ class BrickognizeClient:
         
         return padded
     
-    def image_to_base64(self, image: Image.Image) -> str:
-        """Convert PIL Image to base64 string."""
+    def image_to_bytes(self, image: Image.Image) -> bytes:
+        """Convert PIL Image to bytes."""
         buffered = io.BytesIO()
         image.save(buffered, format="JPEG", quality=95)
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        return img_str
+        return buffered.getvalue()
     
     def parse_predictions(self, api_response: Dict) -> List[BrickPrediction]:
         """Parse API response into BrickPrediction objects."""
@@ -266,21 +243,39 @@ class BrickognizeClient:
             print(f"API Error: {api_response['error']}")
             return predictions
         
-        for pred in api_response.get('predictions', []):
+        for pred in api_response.get('items', []):
             try:
+                category_str = pred.get('category', 'other').lower()
+                brick_type = BrickType.OTHER
+                if 'brick' in category_str:
+                    brick_type = BrickType.BRICK
+                elif 'plate' in category_str:
+                    brick_type = BrickType.PLATE
+                elif 'tile' in category_str:
+                    brick_type = BrickType.TILE
+                elif 'slope' in category_str:
+                    brick_type = BrickType.SLOPE
+                elif 'arch' in category_str:
+                    brick_type = BrickType.ARCH
+                elif 'technic' in category_str:
+                    brick_type = BrickType.TECHNIC
+
                 brick_pred = BrickPrediction(
-                    part_number=pred.get('part_number', 'unknown'),
+                    part_number=pred.get('id', 'unknown'),
                     name=pred.get('name', 'Unknown Brick'),
-                    confidence=pred.get('confidence', 0.0),
-                    brick_type=BrickType(pred.get('type', 'other')),
+                    confidence=float(pred.get('score', 0.0)),
+                    brick_type=brick_type,
                     color=pred.get('color'),
                     dimensions=self.parse_dimensions(pred.get('dimensions')),
-                    image_url=pred.get('image_url')
+                    image_url=pred.get('img_url')
                 )
                 predictions.append(brick_pred)
                 
+            except (ValueError, TypeError) as e:
+                print(f"Error parsing prediction score: {e} - Prediction: {pred}")
+                continue
             except Exception as e:
-                print(f"Error parsing prediction: {e}")
+                print(f"An unexpected error occurred during prediction parsing: {e}")
                 continue
         
         return predictions
@@ -327,7 +322,7 @@ class BrickognizeClient:
                 results.append({"error": str(e), "predictions": []})
             
             # Add small delay to avoid rate limiting
-            time.sleep(0.1)
+            time.sleep(1)
         
         return results
     
@@ -354,70 +349,73 @@ class BrickognizeClient:
 class BrickognizePipeline:
     """Pipeline for processing YOLO detections with Brickognize API."""
     
-    def __init__(self, api_key: str = None, confidence_threshold: float = 0.7):
+    def __init__(self, api_key: str = None, confidence_threshold: float = 0.7, concurrency_limit: int = 5):
         """
         Initialize pipeline.
         
         Args:
             api_key: Brickognize API key
             confidence_threshold: Minimum confidence for considering predictions
+            concurrency_limit: Max number of concurrent requests to the API
         """
         self.client = BrickognizeClient(api_key)
         self.confidence_threshold = confidence_threshold
+        self.semaphore = asyncio.Semaphore(concurrency_limit)
     
-    def process_yolo_detections(self, original_image: np.ndarray, yolo_detections: List[Dict]) -> List[Dict]:
+    async def _process_single_detection(self, client, original_image, detection):
+        """Helper to process a single detection with semaphore control."""
+        async with self.semaphore:
+            await asyncio.sleep(1)  # Add a small delay to avoid rate-limiting
+            return await client.identify_brick_from_detection_async(original_image, detection['box'])
+
+    async def process_detections(self, original_image: np.ndarray, detections: List[Dict]) -> List[Dict]:
         """
-        Process YOLO detections through Brickognize API.
+        Process YOLO detections through Brickognize API concurrently with rate limiting.
         
         Args:
             original_image: Original image as numpy array
-            yolo_detections: List of YOLO detection results
+            detections: List of YOLO detection results from the pipeline
             
         Returns:
             List of enhanced detection results with Brickognize predictions
         """
         enhanced_detections = []
         
-        for detection in yolo_detections:
-            bbox = detection.get('bbox', [])
-            confidence = detection.get('confidence', 0)
-            class_name = detection.get('class', 'unknown')
-            
-            if confidence < 0.5:  # Skip low-confidence YOLO detections
-                continue
-            
-            try:
-                # Get Brickognize prediction
-                brick_result = self.client.identify_brick_from_detection(original_image, bbox)
-                brick_predictions = self.client.parse_predictions(brick_result)
-                
-                # Filter predictions by confidence
+        async with self.client as client:
+            tasks = [self._process_single_detection(client, original_image, det) for det in detections]
+            brick_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for i, result in enumerate(brick_results):
+            det = detections[i]
+            box = det['box']
+            confidence = det['confidence']
+
+            # Default placeholder for the prediction
+            best_prediction_data = {
+                'part_number': 'unknown',
+                'name': 'Unknown Piece',
+                'confidence': 0.0,
+            }
+
+            if isinstance(result, Exception):
+                print(f"Error processing detection {i}: {result}")
+            else:
+                brick_predictions = self.client.parse_predictions(result)
                 valid_predictions = [p for p in brick_predictions if p.confidence >= self.confidence_threshold]
                 
                 if valid_predictions:
-                    best_prediction = max(valid_predictions, key=lambda x: x.confidence)
-                    
-                    enhanced_detection = {
-                        'yolo_bbox': bbox,
-                        'yolo_confidence': confidence,
-                        'yolo_class': class_name,
-                        'brickognize_prediction': {
-                            'part_number': best_prediction.part_number,
-                            'name': best_prediction.name,
-                            'confidence': best_prediction.confidence,
-                            'brick_type': best_prediction.brick_type.value,
-                            'color': best_prediction.color,
-                            'dimensions': best_prediction.dimensions
-                        },
-                        'combined_confidence': (confidence + best_prediction.confidence) / 2
-                    }
-                    
-                    enhanced_detections.append(enhanced_detection)
-                    
-            except Exception as e:
-                print(f"Error processing detection: {e}")
-                continue
-        
+                    best_prediction = max(valid_predictions, key=lambda p: p.confidence)
+                    best_prediction_data['part_number'] = best_prediction.part_number
+                    best_prediction_data['name'] = best_prediction.name
+                    best_prediction_data['confidence'] = best_prediction.confidence
+
+            enhanced_detection = {
+                'yolo_bbox': box,
+                'yolo_confidence': confidence,
+                'brickognize_prediction': best_prediction_data
+            }
+            enhanced_detections.append(enhanced_detection)
+                
         return enhanced_detections
     
     def create_brick_inventory(self, enhanced_detections: List[Dict]) -> Dict:
@@ -457,7 +455,7 @@ class BrickognizePipeline:
 
 def main():
     """Example usage of Brickognize API integration."""
-    
+
     # Initialize client
     api_key = os.getenv("BRICKOGNIZE_API_KEY")
     if not api_key:
