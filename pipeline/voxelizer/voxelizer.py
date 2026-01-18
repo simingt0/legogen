@@ -81,23 +81,15 @@ def voxelize_mesh(obj_path: str, size: int = 16) -> np.ndarray:
     if voxel_matrix.dtype != bool:
         voxel_matrix = voxel_matrix.astype(bool)
 
-    print(f"Voxelized mesh: {voxel_matrix.shape} voxels")
-    print(f"  Original mesh size: {mesh_size}")
-    print(f"  Pitch (voxel size): {pitch:.4f}")
-    print(f"  Filled voxels: {voxel_matrix.sum()} / {voxel_matrix.size}")
-
     # Swap Y and Z axes so Z is vertical (up)
     # trimesh voxelizes with Y as up, but we need Z as up for layer-by-layer building
     voxel_matrix = np.transpose(voxel_matrix, (0, 2, 1))
-    print(f"  After axis swap (Y↔Z): {voxel_matrix.shape} voxels")
 
     # Extract only the largest connected component
     voxel_matrix = _extract_largest_component(voxel_matrix)
-    print(f"  After extracting largest component: {voxel_matrix.sum()} voxels")
 
     # Fill enclosed spaces (but keep holes/openings)
     voxel_matrix = _fill_enclosed_spaces(voxel_matrix)
-    print(f"  After filling enclosed spaces: {voxel_matrix.sum()} voxels")
 
     return voxel_matrix
 

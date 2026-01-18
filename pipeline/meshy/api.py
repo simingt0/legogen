@@ -202,11 +202,9 @@ async def _poll_for_completion(
             time_since_last = current_time - last_poll_time
             last_poll_time = current_time
 
-            # Log progress for debugging
-            print(
-                f"Meshy task {task_id}: {status} ({progress}%) - Elapsed: {elapsed_total:.1f}s (this poll: {time_since_last:.1f}s)"
-            )
-            print(f"[DEBUG] Full response: {json.dumps(data, indent=2)}")
+            # Log progress only on significant updates (every 20%)
+            if progress % 20 == 0 or progress > 90:
+                print(f"   Meshy: {progress}% complete ({elapsed_total:.0f}s elapsed)")
 
             if status == "SUCCEEDED":
                 model_urls = data.get("model_urls", {})
@@ -259,7 +257,6 @@ async def _download_obj(
         with open(output_path, "wb") as f:
             f.write(response.content)
 
-        print(f"Downloaded OBJ model to: {output_path}")
         return str(output_path)
 
     except httpx.HTTPStatusError as e:
@@ -316,6 +313,7 @@ def _get_cached_model(description: str, art_style: str, output_dir: str) -> str 
         output_file = output_path / f"{task_id}.obj"
 
         shutil.copy2(cache_obj_path, output_file)
+        print(f"   Using cached model for '{description}'")
         return str(output_file)
 
     except (json.JSONDecodeError, IOError):
@@ -349,8 +347,6 @@ def _cache_model(description: str, art_style: str, obj_path: str) -> None:
 
         # Copy OBJ file to cache
         shutil.copy2(obj_path, cache_obj_path)
-
-        print(f"Cached model for '{description}' (key: {cache_key})")
 
     except IOError as e:
         print(f"Warning: Failed to cache model: {e}")
@@ -396,8 +392,5 @@ f 5 1 4 8
     # Write the file
     with open(output_path, "w") as f:
         f.write(obj_content)
-
-    print(f"[MOCK MODE] Generated test OBJ for '{description}'")
-    print(f"[MOCK MODE] Saved to: {output_path}")
 
     return str(output_path)
