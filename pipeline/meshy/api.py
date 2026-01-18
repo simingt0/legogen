@@ -22,7 +22,7 @@ MESHY_BASE_URL = "https://api.meshy.ai"
 
 # Cache configuration
 CACHE_DIR = Path(__file__).parent / "cache"
-MESHY_MODE = os.environ.get("MESHY_MODE", "test").lower()  # test, cache, or prod
+MESHY_MODE = os.environ.get("MESHY_MODE", "test").lower()  # test, cache, prod, or mock
 
 
 async def generate_3d_model(
@@ -40,7 +40,8 @@ async def generate_3d_model(
         output_dir: Directory to save the downloaded OBJ file
         art_style: "sculpture" (blocky, better for voxelization) or "realistic"
         timeout: Max seconds to wait for generation (default 5 minutes)
-        mode: Override mode - "test" (use cache), "cache" (query and cache), "prod" (query only)
+        mode: Override mode - "test" (use cache), "cache" (query and cache),
+              "prod" (query only), "mock" (generate simple test OBJ)
               If None, uses MESHY_MODE environment variable (default: "test")
 
     Returns:
@@ -61,14 +62,18 @@ async def generate_3d_model(
     # Determine mode
     active_mode = mode if mode is not None else MESHY_MODE
 
-    if active_mode not in ["test", "cache", "prod"]:
+    if active_mode not in ["test", "cache", "prod", "mock"]:
         raise ValueError(
-            f"Invalid mode: {active_mode}. Must be 'test', 'cache', or 'prod'"
+            f"Invalid mode: {active_mode}. Must be 'test', 'cache', 'prod', or 'mock'"
         )
 
     # Create output directory if it doesn't exist
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+
+    # MOCK MODE: Generate simple test OBJ file
+    if active_mode == "mock":
+        return _generate_mock_obj(description, output_dir)
 
     # TEST MODE: Use cached response only
     if active_mode == "test":
@@ -172,6 +177,7 @@ async def _poll_for_completion(
 
     start_time = asyncio.get_event_loop().time()
     poll_interval = 5  # seconds
+    last_poll_time = start_time
 
     while True:
         # Check timeout
@@ -190,8 +196,17 @@ async def _poll_for_completion(
             status = data.get("status")
             progress = data.get("progress", 0)
 
+            # Calculate timing
+            current_time = asyncio.get_event_loop().time()
+            elapsed_total = current_time - start_time
+            time_since_last = current_time - last_poll_time
+            last_poll_time = current_time
+
             # Log progress for debugging
-            print(f"Meshy task {task_id}: {status} ({progress}%)")
+            print(
+                f"Meshy task {task_id}: {status} ({progress}%) - Elapsed: {elapsed_total:.1f}s (this poll: {time_since_last:.1f}s)"
+            )
+            print(f"[DEBUG] Full response: {json.dumps(data, indent=2)}")
 
             if status == "SUCCEEDED":
                 model_urls = data.get("model_urls", {})
@@ -339,3 +354,50 @@ def _cache_model(description: str, art_style: str, obj_path: str) -> None:
 
     except IOError as e:
         print(f"Warning: Failed to cache model: {e}")
+
+
+def _generate_mock_obj(description: str, output_dir: str) -> str:
+    """
+    Generate a simple mock OBJ file for testing without API calls.
+
+    Returns:
+        Path to the generated OBJ file
+    """
+    import time
+
+    # Generate a simple cube OBJ
+    obj_content = """# Mock OBJ file for testing
+# Description: {description}
+# Generated: {timestamp}
+
+# Vertices
+v -1.0 -1.0  1.0
+v  1.0 -1.0  1.0
+v  1.0  1.0  1.0
+v -1.0  1.0  1.0
+v -1.0 -1.0 -1.0
+v  1.0 -1.0 -1.0
+v  1.0  1.0 -1.0
+v -1.0  1.0 -1.0
+
+# Faces
+f 1 2 3 4
+f 5 8 7 6
+f 1 5 6 2
+f 2 6 7 3
+f 3 7 8 4
+f 5 1 4 8
+""".format(description=description, timestamp=time.time())
+
+    # Create unique filename based on description
+    cache_key = _get_cache_key(description, "sculpture")
+    output_path = Path(output_dir) / f"mock_{cache_key}.obj"
+
+    # Write the file
+    with open(output_path, "w") as f:
+        f.write(obj_content)
+
+    print(f"[MOCK MODE] Generated test OBJ for '{description}'")
+    print(f"[MOCK MODE] Saved to: {output_path}")
+
+    return str(output_path)
