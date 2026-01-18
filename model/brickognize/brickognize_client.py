@@ -163,10 +163,8 @@ class BrickognizeClient:
                        content_type='image/jpeg')
         
         try:
-            print(f"Sending request to {url}...")
             async with self.session.post(url, data=data) as response:
                 response_text = await response.text()
-                print(f"Received response (status {response.status}): {response_text}")
                 response.raise_for_status()
                 return await response.json()
         except aiohttp.ClientError as e:
@@ -368,7 +366,7 @@ class BrickognizePipeline:
             await asyncio.sleep(1)  # Add a small delay to avoid rate-limiting
             return await client.identify_brick_from_detection_async(original_image, detection['box'])
 
-    async def process_detections(self, original_image: np.ndarray, detections: List[Dict]) -> List[Dict]:
+    async def process_detections(self, original_image: np.ndarray, detections: List[Dict]) -> tuple[list, list]:
         """
         Process YOLO detections through Brickognize API concurrently with rate limiting.
         
@@ -377,46 +375,56 @@ class BrickognizePipeline:
             detections: List of YOLO detection results from the pipeline
             
         Returns:
-            List of enhanced detection results with Brickognize predictions
+            tuple: A tuple containing:
+                - list: All identifications (including low confidence).
+                - list: Only high-confidence identifications for final output.
         """
-        enhanced_detections = []
+        all_identifications = []
+        high_confidence_detections = []
         
         async with self.client as client:
             tasks = [self._process_single_detection(client, original_image, det) for det in detections]
             brick_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for i, result in enumerate(brick_results):
+            if isinstance(result, Exception):
+                continue
+            
             det = detections[i]
             box = det['box']
             confidence = det['confidence']
-
-            # Default placeholder for the prediction
-            best_prediction_data = {
-                'part_number': 'unknown',
-                'name': 'Unknown Piece',
-                'confidence': 0.0,
-            }
-
-            if isinstance(result, Exception):
-                print(f"Error processing detection {i}: {result}")
-            else:
-                brick_predictions = self.client.parse_predictions(result)
-                valid_predictions = [p for p in brick_predictions if p.confidence >= self.confidence_threshold]
+            
+            brick_predictions = self.client.parse_predictions(result)
+            valid_predictions = [p for p in brick_predictions if p.confidence >= self.confidence_threshold]
+            
+            if valid_predictions:
+                best_prediction = max(valid_predictions, key=lambda p: p.confidence)
                 
-                if valid_predictions:
-                    best_prediction = max(valid_predictions, key=lambda p: p.confidence)
-                    best_prediction_data['part_number'] = best_prediction.part_number
-                    best_prediction_data['name'] = best_prediction.name
-                    best_prediction_data['confidence'] = best_prediction.confidence
-
-            enhanced_detection = {
-                'yolo_bbox': box,
-                'yolo_confidence': confidence,
-                'brickognize_prediction': best_prediction_data
-            }
-            enhanced_detections.append(enhanced_detection)
+                enhanced_detection = {
+                    'yolo_bbox': box,
+                    'yolo_confidence': confidence,
+                    'brickognize_prediction': {
+                        'part_number': best_prediction.part_number,
+                        'name': best_prediction.name,
+                        'confidence': best_prediction.confidence,
+                    }
+                }
+                high_confidence_detections.append(enhanced_detection)
+            
+            # Add to all identifications regardless of confidence
+            if brick_predictions:
+                best_overall_prediction = max(brick_predictions, key=lambda p: p.confidence)
+                all_identifications.append({
+                    'yolo_bbox': box,
+                    'yolo_confidence': confidence,
+                    'brickognize_prediction': {
+                        'part_number': best_overall_prediction.part_number,
+                        'name': best_overall_prediction.name,
+                        'confidence': best_overall_prediction.confidence,
+                    }
+                })
                 
-        return enhanced_detections
+        return all_identifications, high_confidence_detections
     
     def create_brick_inventory(self, enhanced_detections: List[Dict]) -> Dict:
         """

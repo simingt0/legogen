@@ -27,7 +27,7 @@ class InferencePipeline:
         self.model = YOLO(model_path)
         self.brickognize_pipeline = BrickognizePipeline()
 
-    async def run(self, image_path: str) -> tuple[list, list]:
+    async def run(self, image_path: str) -> tuple[list, list, list]:
         """
         Executes the object detection part of the pipeline on a single image.
 
@@ -36,7 +36,8 @@ class InferencePipeline:
 
         Returns:
             tuple: A tuple containing:
-                - list: Identified bricks with Brickognize data.
+                - list: All identifications from Brickognize (including low confidence).
+                - list: High-confidence identifications for final output.
                 - list: Raw YOLO detection data.
         """
         if not os.path.exists(image_path):
@@ -65,18 +66,18 @@ class InferencePipeline:
 
         # 3. Process all detected bricks concurrently using Brickognize
         print("Identifying bricks with Brickognize API...")
-        identified_bricks = await self.brickognize_pipeline.process_detections(image, detection_data)
+        all_identifications, high_confidence_detections = await self.brickognize_pipeline.process_detections(image, detection_data)
 
-        return identified_bricks, detection_data
+        return all_identifications, high_confidence_detections, detection_data
 
-def save_results(output_dir: Path, image: np.ndarray, results: list, yolo_detections: list):
-    """Saves the JSON results, YOLO image, and the final annotated image."""
+def save_results(output_dir: Path, image: np.ndarray, all_identifications: list, high_confidence_results: list, yolo_detections: list):
+    """Saves the JSON results, YOLO image, identified blocks image, and the final annotated image."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Save JSON results
+    # 1. Save JSON results (only high-confidence results)
     json_path = output_dir / "results.json"
     with open(json_path, 'w') as f:
-        json.dump(results, f, indent=4)
+        json.dump(high_confidence_results, f, indent=4)
     print(f"\nResults saved to: {json_path}")
 
     # 2. Save YOLO-only annotated image
@@ -95,9 +96,30 @@ def save_results(output_dir: Path, image: np.ndarray, results: list, yolo_detect
     cv2.imwrite(str(yolo_image_path), yolo_image)
     print(f"YOLO detection image saved to: {yolo_image_path}")
 
-    # 3. Save final annotated image (with Brickognize results)
+    # 3. Save identified blocks image (all identifications including unknown)
+    identified_blocks_image = image.copy()
+    for result in all_identifications:
+        box = result['yolo_bbox']
+        x1, y1, x2, y2 = [int(coord) for coord in box]
+        cv2.rectangle(identified_blocks_image, (x1, y1), (x2, y2), (255, 255, 0), 2)  # Yellow for identified
+
+        pred = result['brickognize_prediction']
+        if pred['confidence'] > 0.0:  # Show all predictions
+            label = f"{pred['name']} ({pred['confidence']:.2f})"
+        else:
+            label = "Unknown"
+
+        (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        cv2.rectangle(identified_blocks_image, (x1, y1 - h - 5), (x1 + w, y1), (255, 255, 0), -1)
+        cv2.putText(identified_blocks_image, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+
+    identified_blocks_path = output_dir / "identified_blocks.jpg"
+    cv2.imwrite(str(identified_blocks_path), identified_blocks_image)
+    print(f"Identified blocks image saved to: {identified_blocks_path}")
+
+    # 4. Save final annotated image (only high-confidence results)
     annotated_image = image.copy()
-    for result in results:
+    for result in high_confidence_results:
         box = result['yolo_bbox']
         x1, y1, x2, y2 = [int(coord) for coord in box]
         cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green for final
@@ -109,9 +131,9 @@ def save_results(output_dir: Path, image: np.ndarray, results: list, yolo_detect
         cv2.rectangle(annotated_image, (x1, y1 - h - 5), (x1 + w, y1), (0, 255, 0), -1)
         cv2.putText(annotated_image, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
-    image_path = output_dir / "annotated_image.jpg"
-    cv2.imwrite(str(image_path), annotated_image)
-    print(f"Final annotated image saved to: {image_path}")
+    final_image_path = output_dir / "annotated_image.jpg"
+    cv2.imwrite(str(final_image_path), annotated_image)
+    print(f"Final annotated image saved to: {final_image_path}")
 
 async def main():
     parser = argparse.ArgumentParser(description="Run LEGO brick identification pipeline")
@@ -124,22 +146,22 @@ async def main():
 
     try:
         pipeline = InferencePipeline(args.model)
-        results, yolo_detections = await pipeline.run(args.image_path)
+        all_identifications, high_confidence_results, yolo_detections = await pipeline.run(args.image_path)
         
         # --- Result Processing and Saving ---
-        if results:
+        if high_confidence_results:
             image = cv2.imread(args.image_path)
             image_name = Path(args.image_path).stem
             output_dir = Path("runs/predict") / image_name
 
-            save_results(output_dir, image, results, yolo_detections)
+            save_results(output_dir, image, all_identifications, high_confidence_results, yolo_detections)
 
             print("\n=== Detection Results (Console) ===")
-            for i, result in enumerate(results):
+            for i, result in enumerate(high_confidence_results):
                 pred = result['brickognize_prediction']
                 print(f"Detection {i+1}: {pred['name']} (Confidence: {pred['confidence']:.2f})")
         else:
-            print("No detections to save.")
+            print("No high-confidence detections to save.")
                 
     except Exception as e:
         print(f"An error occurred: {e}")
