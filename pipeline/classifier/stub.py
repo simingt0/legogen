@@ -158,7 +158,7 @@ def _run_inference_pipeline(image_bytes: bytes) -> dict[str, int]:
             cmd,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=180,
             cwd=str(project_root / "model"),
         )
 

@@ -320,7 +320,7 @@ def generate_build_instructions(
     This is a wrapper function for backward compatibility.
     Uses Algorithm 9 (Floating Component Bonus) by default.
     """
-    from .algorithm9 import Algorithm9
+    from .algorithm0 import Algorithm0
 
-    algorithm = Algorithm9()
+    algorithm = Algorithm0()
     return algorithm.build(voxel_grid, available_bricks)

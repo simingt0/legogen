@@ -3,7 +3,9 @@ LegoGen Server - FastAPI application
 Integrates all pipeline components: classifier, meshy, voxelizer, and builder
 """
 
+import argparse
 import asyncio
+import json
 import os
 import sys
 import time
@@ -42,12 +44,20 @@ BRICK_PATTERNS = ["█", "▓", "▒", "░", "▪", "▫", "●", "○", "◆",
 
 RESET_COLOR = "\033[0m"
 
+# Global variable to store CLI-specified bricks JSON path
+BRICKS_JSON_PATH = None
+
 app = FastAPI(title="LegoGen", description="LEGO build instruction generator")
 
 # CORS setup for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,8 +109,8 @@ async def build(request: Request):
         form = await request.form()
         description = form.get("description")
         image = form.get("image")
-        voxel_size = int(form.get("voxel_size", 10))
-        max_attempts = int(form.get("max_attempts", 5))
+        voxel_size = int(form.get("voxel_size", 256))
+        max_attempts = int(form.get("max_attempts", 1))
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse form data: {e}")
@@ -138,12 +148,19 @@ async def build(request: Request):
         print(f"Voxel size: {voxel_size}, Max attempts: {max_attempts}")
         print(f"{'=' * 70}\n")
 
-        # Step 1 & 2: Run classifier and meshy in parallel
-        print("📋 Step 1 & 2: Running classifier and Meshy in parallel...")
+        # Step 1 & 2: Get bricks and generate model
+        print("📋 Step 1 & 2: Getting bricks and running Meshy in parallel...")
 
-        classifier_task = asyncio.create_task(
-            asyncio.to_thread(classify_bricks, image_bytes)
-        )
+        # Check if we should use CLI-specified bricks JSON
+        if BRICKS_JSON_PATH:
+            print(f"   📦 Using bricks from: {BRICKS_JSON_PATH}")
+            with open(BRICKS_JSON_PATH, "r") as f:
+                available_bricks = json.load(f)
+            classifier_task = asyncio.create_task(asyncio.sleep(0))  # Dummy task
+        else:
+            classifier_task = asyncio.create_task(
+                asyncio.to_thread(classify_bricks, image_bytes)
+            )
 
         # Use test mode by default (will use cache if available)
         meshy_mode = os.environ.get("MESHY_MODE", "test")
@@ -153,13 +170,19 @@ async def build(request: Request):
             )
         )
 
-        available_bricks, model_path = await asyncio.gather(
-            classifier_task,
-            model_task,
-        )
+        if not BRICKS_JSON_PATH:
+            available_bricks, model_path = await asyncio.gather(
+                classifier_task,
+                model_task,
+            )
+        else:
+            model_path = await model_task
 
         total_bricks = sum(available_bricks.values())
-        print(f"   ✅ Classifier: {total_bricks} bricks detected")
+        if BRICKS_JSON_PATH:
+            print(f"   ✅ Bricks loaded: {total_bricks} bricks from JSON")
+        else:
+            print(f"   ✅ Classifier: {total_bricks} bricks detected")
         print(f"   ✅ Meshy: 3D model ready\n")
 
         # Step 3: Voxelize the 3D model
@@ -350,4 +373,34 @@ def _print_build_visualization(layers: list, voxel_shape: tuple):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    parser = argparse.ArgumentParser(description="LegoGen Server")
+    parser.add_argument(
+        "--bricks-json",
+        type=str,
+        help="Path to bricks.json file to use instead of image-based classification",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Host to bind to (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to (default: 8000)",
+    )
+
+    args = parser.parse_args()
+
+    # Set global bricks JSON path if provided
+    if args.bricks_json:
+        bricks_path = Path(args.bricks_json)
+        if not bricks_path.exists():
+            print(f"❌ Error: Bricks JSON file not found: {bricks_path}")
+            sys.exit(1)
+        BRICKS_JSON_PATH = str(bricks_path.resolve())
+        print(f"✅ Using bricks from: {BRICKS_JSON_PATH}\n")
+
+    uvicorn.run(app, host=args.host, port=args.port)
