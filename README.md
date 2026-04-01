@@ -1,27 +1,65 @@
-# setup
-### python
-create python environment (uv recommended) and install requirements.txt
-`uv venv`
-`source .venv/bin/activate`
-`uv pip install -r requirements.txt`
-`cd server`
-`uvicorn main:app --reload`
+# LegoGen Setup & Usage Guide
 
+This guide walks you through setting up, running, and using the project for Mac/Linux.
+
+---
+
+# Prerequisites
+
+Before starting, make sure you have:
+
+- Python 3.9+ (recommended)
+- Node.js + npm
+- `uv` (recommended Python package manager)
+
+If you do not already have Node.js and npm installed, download and install Node.js from the official Node.js website. The standard Node.js installer includes npm.
+
+Recommended: install the **LTS** version.
+
+After installing, verify it worked:
+
+```
+node -v
+npm -v
+```
+
+If you don't have `uv`:
+
+```
+pip install uv
+```
+
+# Setup
+### Python
+Create python environment (uv recommended) and install requirements.txt
+```
+cd path/to/legogen
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+Now, you can start the backend:
+```
+cd server
+uvicorn main:app --reload
+```
 ### npm
-install packages and run dev server
-`cd web`
-`npm install`
-`npm run dev`
+Now, open a new terminal (cd to project directory) and run:
+```
+cd web
+npm install
+npm run dev
+```
+At this point you should see the frontend up and running on port 5173. If it does not automatically open, go to 'http://localhost:5173' in your browser.
 
-at this point you should see the frontend up and running on port 5173.
+# Usage
+1. Upload image
+2. Type prompt or select pre-loaded prompt
+3. Play game while it generates (this can take a while if voxel size is big or if you are generating a new mesh)
+4. View generated structure (⬅️➡️ keys to rotate view, space to change visualizer type)
 
-# usage
-1. upload image
-2. type prompt or select pre-loaded prompt
-3. play game while it generates
-4. view generated structure
-
-### cached builds (do not require meshy credits)
+### Cached Builds (do not require meshy API)
+You can put any of these as text without a Meshy API key. 
 - mushroom
 - apple
 - mug
@@ -42,7 +80,7 @@ at this point you should see the frontend up and running on port 5173.
 
 if you want to generate anything else, you will need a MESHY_API_KEY (~$20/mo)
 
-### tweaks
+### Tweaks
 - to change the max dimension of the build (cube-shaped), change `voxel_size` on line 112 of server/main.py
 - to allow builds with more bricks, run the server manually with `python main.py --bricks-json .path/to/bricks.json`, supplying the json file with the simulated bricks you want to use. you will still need to upload an image, but the bricks.json will override the bricks from the image.
 
