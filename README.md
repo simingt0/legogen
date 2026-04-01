@@ -3,6 +3,14 @@
 This guide walks you through setting up, running, and using the project for Mac/Linux.
 
 ---
+# Clone the Repo
+
+First, clone the repository and move into the project folder:
+
+```
+git clone https://github.com/simingt0/legogen.git
+cd legogen
+```
 
 # Prerequisites
 
