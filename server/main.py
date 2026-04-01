@@ -109,7 +109,7 @@ async def build(request: Request):
         form = await request.form()
         description = form.get("description")
         image = form.get("image")
-        voxel_size = int(form.get("voxel_size", 256))
+        voxel_size = int(form.get("voxel_size", 12))
         max_attempts = int(form.get("max_attempts", 1))
 
     except Exception as e:
