@@ -81,8 +81,11 @@ You can put any of these as text without a Meshy API key.
 if you want to generate anything else, you will need a MESHY_API_KEY (~$20/mo)
 
 ### Tweaks
-- to change the max dimension of the build (cube-shaped), change `voxel_size` on line 112 of server/main.py
-- to allow builds with more bricks, run the server manually with `python main.py --bricks-json .path/to/bricks.json`, supplying the json file with the simulated bricks you want to use. you will still need to upload an image, but the bricks.json will override the bricks from the image.
+- If the build is failing because there are not enough bricks in the build or if you want a higher resolution build, you can change the max dimension of the build. To do this, change `voxel_size` on line 112 of server/main.py. It is set to 12 by default:
+  ```
+  voxel_size = int(form.get("voxel_size", 12))
+  ```
+- You can also use "infinite bricks" instead of using the image as a constraint. To do this, run the server manually (instead of uvicorn) with `python main.py --bricks-json .path/to/bricks.json`, supplying the json file with the simulated bricks you want to use. You will still need to upload an image, but the bricks.json will override the bricks from the image. If you are in the main directory, you can run `python main.py --bricks-json pipeline/builder/bricks5.json`
 
 ### things to fix
 - /build should reroute to root when not valid (ideally it saves + reloads the current build until you regenerate)
